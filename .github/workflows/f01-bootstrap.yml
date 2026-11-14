@@ -1,4 +1,4 @@
-name: F01 dependency bootstrap (temporary)
+name: F01 dependency and migration bootstrap (temporary)
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  lockfile:
+  bootstrap:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,12 +25,21 @@ jobs:
           node-version: '22'
       - name: Resolve and pin dependencies
         run: pnpm install --no-frozen-lockfile
-      - name: Commit updated lockfile
+      - name: Validate schema and generate offline migration
         run: |
-          if ! git diff --quiet -- pnpm-lock.yaml; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add pnpm-lock.yaml
-            git commit -m "chore(f01): refresh pnpm lockfile"
+          pnpm db:validate
+          pnpm db:generate
+          mkdir -p prisma/migrations/20261114_f01_auth_initial
+          pnpm exec prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script > prisma/migrations/20261114_f01_auth_initial/migration.sql
+          test -s prisma/migrations/20261114_f01_auth_initial/migration.sql
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml prisma/migrations/20261114_f01_auth_initial/migration.sql
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(f01): lock dependencies and draft offline migration"
+            git fetch origin feature/f01-auth-implementation
+            git rebase origin/feature/f01-auth-implementation
             git push origin HEAD:feature/f01-auth-implementation
           fi
