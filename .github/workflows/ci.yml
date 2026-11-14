@@ -12,26 +12,42 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    permissions:
+      contents: ${{ github.event_name == 'push' && github.ref == 'refs/heads/backend' && 'write' || 'read' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.34.9
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: pnpm
-      - name: Install dependencies
-        # Replace with --frozen-lockfile after the initial pnpm-lock.yaml is committed.
+          cache: ${{ hashFiles('pnpm-lock.yaml') != '' && 'pnpm' || '' }}
+      - name: Bootstrap lockfile on backend
+        if: github.event_name == 'push' && github.ref == 'refs/heads/backend' && hashFiles('pnpm-lock.yaml') == ''
         run: pnpm install --no-frozen-lockfile
+      - name: Commit generated lockfile on backend
+        if: github.event_name == 'push' && github.ref == 'refs/heads/backend' && hashFiles('pnpm-lock.yaml') != '' && hashFiles('.lockfile-committed-marker') == ''
+        run: |
+          if ! git ls-files --error-unmatch pnpm-lock.yaml >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add pnpm-lock.yaml
+            git commit -m "chore(f00): commit generated pnpm lockfile"
+            git push origin HEAD:backend
+          fi
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm lint
       - name: Type check
         run: pnpm typecheck
       - name: Unit tests
         run: pnpm test
+      - name: Validate Prisma schema
+        run: pnpm db:validate
       - name: Build
         run: pnpm build
