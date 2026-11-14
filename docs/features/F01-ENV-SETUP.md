@@ -13,7 +13,7 @@
 7. Create a Resend account, verify your sending domain, create an API key, and set `RESEND_API_KEY` and `AUTH_EMAIL_FROM` (a verified sender). Development email delivery will not work until the sender and API key are configured.
 8. For Prisma CLI only, put `DATABASE_URL_UNPOOLED` in an ignored root `.env` (or load it safely in the CLI environment). Next.js reads `.env.local`; Prisma's `dotenv/config` currently reads `.env` by default.
 9. Install dependencies with `pnpm install --frozen-lockfile`, then run `pnpm db:generate`, `pnpm db:validate`, and `pnpm dev`.
-10. Review the committed SQL in `prisma/migrations/20261114_f01_auth_initial/migration.sql` before running migrations on a **new development database**. Run `pnpm db:deploy` only against the intended dev/test database with explicit approval; do not run production migrations without review.
+10. A migration is **not committed yet**. On a fresh dedicated development database, generate and review the Better Auth schema and Prisma migration with the pinned dependency versions, then run `pnpm db:migrate -- --name f01_auth_initial` only against that development database. Commit the reviewed migration in a separate change. Do not run production migrations without review.
 
 ## Vercel environment variables
 
