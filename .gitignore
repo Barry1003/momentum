@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+# Next.js output
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+# Secrets
+.env
+.env.*
+!.env.example
+# Generated Prisma client
+src/generated/
+# Misc
+.DS_Store
+coverage/
+.vscode/

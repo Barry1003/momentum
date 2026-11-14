@@ -1,0 +1,11 @@
+// Momentum uses PostgreSQL on Neon and Prisma 7.
+// Feature 01 will finalize authentication and user ownership before models are added.
+// No migration has been applied and no database is connected in this foundation.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

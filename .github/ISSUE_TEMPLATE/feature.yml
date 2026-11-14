@@ -1,0 +1,25 @@
+name: Feature
+description: Implement a backend or frontend feature with explicit acceptance criteria
+labels: [feature]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User outcome
+      description: What should users be able to do?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and exclusions
+      description: Name the APIs, data changes and things out of scope.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Include authorization, validation and edge cases.
+    validations:
+      required: true
