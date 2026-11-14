@@ -1,10 +1,9 @@
-name: F01 dependency and migration bootstrap (temporary)
+name: F01 dependency bootstrap (temporary)
 
 on:
   push:
     branches: [feature/f01-auth-implementation]
     paths:
-      - 'package.json'
       - '.github/workflows/f01-bootstrap.yml'
 
 permissions:
@@ -23,23 +22,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Resolve and pin dependencies
-        run: pnpm install --no-frozen-lockfile
-      - name: Validate schema and generate offline migration
+      - name: Resolve and validate dependencies
         run: |
+          pnpm install --no-frozen-lockfile
           pnpm db:validate
           pnpm db:generate
-          mkdir -p prisma/migrations/20261114_f01_auth_initial
-          pnpm exec prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script --output prisma/migrations/20261114_f01_auth_initial/migration.sql
-          test -s prisma/migrations/20261114_f01_auth_initial/migration.sql
-      - name: Commit generated files
+      - name: Commit pinned lockfile and remove temporary bootstrap
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pnpm-lock.yaml prisma/migrations/20261114_f01_auth_initial/migration.sql
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(f01): lock dependencies and draft offline migration"
-            git fetch origin feature/f01-auth-implementation
-            git rebase origin/feature/f01-auth-implementation
-            git push origin HEAD:feature/f01-auth-implementation
-          fi
+          git rm .github/workflows/f01-bootstrap.yml
+          git add pnpm-lock.yaml
+          git commit -m "chore(f01): pin Better Auth dependency and remove bootstrap"
+          git fetch origin feature/f01-auth-implementation
+          git rebase origin/feature/f01-auth-implementation
+          git push origin HEAD:feature/f01-auth-implementation
