@@ -14,13 +14,13 @@ Momentum is a small-group accountability and personal growth PWA for friends. Th
 Requirements: Node 22.12+ and pnpm 10.
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
 Open `http://localhost:3000` or `http://localhost:3000/api/health`.
 
-After first install, commit `pnpm-lock.yaml`. The initial scaffold was generated offline with no dependency install available.
+The committed `pnpm-lock.yaml` pins dependencies for reproducible local installs and CI. Use pnpm 10.34.9 with Node.js 22.12+ as specified in the repository configuration.
 
 ## What exists
 
