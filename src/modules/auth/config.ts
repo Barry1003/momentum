@@ -18,6 +18,7 @@ export function getAuth() {
     secret,
     baseURL,
     database: prismaAdapter(getPrisma(), { provider: "postgresql" }),
+    rateLimit: { enabled: true, window: 60, max: 20 },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
