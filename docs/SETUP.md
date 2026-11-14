@@ -6,34 +6,25 @@
 - pnpm 10.x (`corepack enable` then `corepack prepare pnpm@10 --activate`, or install pnpm normally)
 - Git and a GitHub account
 
-## From the provided bootstrap archive
+## Clone the GitHub repository
 
 ```bash
-unzip momentum-app-bootstrap.zip
-cd momentum-app
-# This archive already has four local git branches.
-git branch -a
-pnpm install
+git clone https://github.com/Barry1003/momentum.git
+cd momentum
+git switch backend
+corepack enable
+corepack prepare pnpm@10.34.9 --activate
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
 Browse to `http://localhost:3000` and test `http://localhost:3000/api/health`.
 
-The archive intentionally excludes `node_modules`, any lockfile, and database credentials because package installation could not be run in the preparation environment. **After the first successful `pnpm install`, commit the generated `pnpm-lock.yaml`** and update CI to use `--frozen-lockfile`.
+The repository's dependency lockfile must be committed on the development branch. For reproducible installs, use `pnpm install --frozen-lockfile`. Do not regenerate the lockfile unless dependencies are intentionally changed.
 
-## Create the remote empty private GitHub repository
+## GitHub remote and branch setup
 
-Use https://github.com/new and create `momentum-app` under your desired account as **Private**, without initializing a README or .gitignore (they are already in this archive).
-
-Then from inside `momentum-app`:
-
-```bash
-git remote add origin https://github.com/Barry1003/momentum-app.git
-git push -u origin main
-git push origin frontend backend error-fixes
-```
-
-If Git rejects because the remote is not empty, do **not** force push. Inspect the history and reconcile first.
+The repository already exists at https://github.com/Barry1003/momentum and has four remote branches. No repository creation or initial push is required. It is currently public; if private visibility is intended, change it in GitHub repository settings.
 
 ## Verify all four branches on GitHub
 
@@ -42,7 +33,7 @@ If Git rejects because the remote is not empty, do **not** force push. Inspect t
 - `backend`: API, Prisma and business logic.
 - `error-fixes`: bug fixes and regressions.
 
-For branch protections/rulesets, use GitHub Settings after the repository is created. Branches exist locally now; no remote exists until pushed.
+For branch protections/rulesets, use GitHub Settings after the repository is created. Remote branches already exist.
 
 ## Database setup (later, after auth choice)
 
@@ -63,4 +54,4 @@ pnpm build
 
 ## What is NOT done
 
-No actual GitHub remote was created. Dependencies have not been installed or tested here; this source is a documentation-based Next.js scaffold prepared offline, not a validated running production application. No Neon connection, migrations, auth screens, accounts or avatar assets exist yet.
+The GitHub repository is active. CI validation should be verified from the current pull request. No Neon connection, migrations, auth screens, accounts or avatar assets exist yet. No Neon connection, migrations, auth screens, accounts or avatar assets exist yet.
