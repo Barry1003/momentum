@@ -7,13 +7,11 @@ on:
     branches: [main, frontend, backend, error-fixes]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   checks:
     runs-on: ubuntu-latest
-    permissions:
-      contents: ${{ github.event_name == 'push' && github.ref == 'refs/heads/backend' && 'write' || 'read' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,12 +23,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: ${{ hashFiles('pnpm-lock.yaml') != '' && 'pnpm' || '' }}
+          # Enable pnpm caching after the lockfile is committed.
       - name: Bootstrap lockfile on backend
         if: github.event_name == 'push' && github.ref == 'refs/heads/backend' && hashFiles('pnpm-lock.yaml') == ''
         run: pnpm install --no-frozen-lockfile
       - name: Commit generated lockfile on backend
-        if: github.event_name == 'push' && github.ref == 'refs/heads/backend' && hashFiles('pnpm-lock.yaml') != '' && hashFiles('.lockfile-committed-marker') == ''
+        if: github.event_name == 'push' && github.ref == 'refs/heads/backend' && hashFiles('pnpm-lock.yaml') != ''
         run: |
           if ! git ls-files --error-unmatch pnpm-lock.yaml >/dev/null 2>&1; then
             git config user.name "github-actions[bot]"
