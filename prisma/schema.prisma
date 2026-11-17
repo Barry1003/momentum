@@ -26,6 +26,8 @@ model User {
   tasksOwned Task[] @relation("TaskOwner")
   tasksAssigned Task[] @relation("TaskAssignee")
   taskCompletions TaskCompletion[]
+  habits Habit[]
+  habitLogs HabitLog[]
 
   @@map("user")
 }
@@ -130,6 +132,7 @@ model Squad {
   invitations SquadInvitation[]
   goals Goal[]
   tasks Task[]
+  sharedHabits Habit[]
 
   @@index([ownerId])
   @@map("squad")
@@ -223,6 +226,7 @@ model Goal {
   squad       Squad? @relation(fields: [squadId], references: [id], onDelete: Restrict)
   members     GoalMember[]
   tasks       Task[]
+  habits       Habit[]
 
   @@index([ownerId, status])
   @@index([squadId, status])
@@ -287,4 +291,62 @@ model TaskCompletion {
   @@unique([taskId, occurrenceDate])
   @@index([userId, occurrenceDate])
   @@map("task_completion")
+}
+
+enum HabitTargetType {
+  CHECK
+  COUNT
+  DURATION
+}
+
+enum HabitStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+model Habit {
+  id                String @id @default(cuid())
+  ownerId           String
+  name              String
+  description       String?
+  category          String?
+  icon              String?
+  targetType        HabitTargetType @default(CHECK)
+  targetValue       Int @default(1)
+  unit              String?
+  reminderTime      String?
+  goalId            String?
+  sharedWithSquadId String?
+  status            HabitStatus @default(ACTIVE)
+  pausedAt          DateTime?
+  archivedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  owner             User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  goal              Goal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  sharedWithSquad   Squad? @relation(fields: [sharedWithSquadId], references: [id], onDelete: SetNull)
+  logs              HabitLog[]
+
+  @@index([ownerId, status])
+  @@index([sharedWithSquadId])
+  @@map("habit")
+}
+
+model HabitLog {
+  id        String @id @default(cuid())
+  habitId   String
+  userId    String
+  date      DateTime @db.Date
+  value     Int
+  completed Boolean
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  habit     Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([habitId, date])
+  @@index([userId, date])
+  @@map("habit_log")
 }
