@@ -109,7 +109,7 @@ export async function createTask(userId: string, input: CreateTask) {
     }
   }
   if (input.assigneeId && input.assigneeId !== userId) {
-    if (!squadId) throw new SquadError("INVALID_ASSIGNEE", 400, "Personal tasks cannot assign another user");
+    if (!squadId || input.visibility !== "SQUAD") throw new SquadError("INVALID_ASSIGNEE", 400, "Another member can only be assigned a squad-visible task");
     await activeMember(squadId, input.assigneeId);
   }
   return db().task.create({
