@@ -21,6 +21,11 @@ model User {
   ownedSquads   Squad[]           @relation("SquadOwner")
   squadMemberships SquadMember[]
   invitationsCreated SquadInvitation[] @relation("InvitationCreator")
+  goalsOwned Goal[] @relation("GoalOwner")
+  goalMemberships GoalMember[]
+  tasksOwned Task[] @relation("TaskOwner")
+  tasksAssigned Task[] @relation("TaskAssignee")
+  taskCompletions TaskCompletion[]
 
   @@map("user")
 }
@@ -123,6 +128,8 @@ model Squad {
   owner       User @relation("SquadOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   members     SquadMember[]
   invitations SquadInvitation[]
+  goals Goal[]
+  tasks Task[]
 
   @@index([ownerId])
   @@map("squad")
@@ -165,4 +172,119 @@ model SquadInvitation {
   @@index([squadId, status])
   @@index([expiresAt])
   @@map("squad_invitation")
+}
+
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+enum GoalSource {
+  MANUAL
+  GROWTH_STUDIO
+}
+enum GoalMemberRole {
+  EDITOR
+  VIEWER
+}
+enum TaskVisibility {
+  PRIVATE
+  SQUAD
+}
+enum TaskPriority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+enum TaskQuadrant {
+  DO
+  PLAN
+  RECONSIDER
+  LEAVE
+}
+
+model Goal {
+  id          String @id @default(cuid())
+  ownerId     String
+  squadId     String?
+  title       String
+  why         String?
+  area        String?
+  status      GoalStatus @default(ACTIVE)
+  targetDate  DateTime? @db.Date
+  completedAt DateTime?
+  source      GoalSource @default(MANUAL)
+  archivedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User @relation("GoalOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  squad       Squad? @relation(fields: [squadId], references: [id], onDelete: Restrict)
+  members     GoalMember[]
+  tasks       Task[]
+
+  @@index([ownerId, status])
+  @@index([squadId, status])
+  @@map("goal")
+}
+
+model GoalMember {
+  id        String @id @default(cuid())
+  goalId    String
+  userId    String
+  role      GoalMemberRole @default(VIEWER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  goal      Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([goalId, userId])
+  @@index([userId])
+  @@map("goal_member")
+}
+
+model Task {
+  id            String @id @default(cuid())
+  ownerId       String
+  assigneeId    String?
+  goalId        String?
+  squadId       String?
+  title         String
+  notes         String?
+  dueDate       DateTime? @db.Date
+  dueTime       String?
+  durationMin   Int?
+  priority      TaskPriority @default(NONE)
+  visibility    TaskVisibility @default(PRIVATE)
+  quadrant      TaskQuadrant?
+  archivedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  owner         User @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  assignee      User? @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  goal          Goal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  squad         Squad? @relation(fields: [squadId], references: [id], onDelete: Restrict)
+  completions   TaskCompletion[]
+
+  @@index([ownerId, dueDate])
+  @@index([squadId, dueDate])
+  @@index([goalId])
+  @@map("task")
+}
+
+model TaskCompletion {
+  id             String @id @default(cuid())
+  taskId         String
+  userId         String
+  occurrenceDate DateTime @db.Date
+  completedAt    DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  task           Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user           User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, occurrenceDate])
+  @@index([userId, occurrenceDate])
+  @@map("task_completion")
 }
