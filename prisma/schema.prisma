@@ -18,6 +18,9 @@ model User {
   sessions      Session[]
   accounts      Account[]
   profile       UserProfile?
+  ownedSquads   Squad[]           @relation("SquadOwner")
+  squadMemberships SquadMember[]
+  invitationsCreated SquadInvitation[] @relation("InvitationCreator")
 
   @@map("user")
 }
@@ -82,4 +85,84 @@ model UserProfile {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profile")
+}
+
+
+enum SquadRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum SquadMemberStatus {
+  ACTIVE
+  LEFT
+  REMOVED
+}
+
+enum SquadStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum InvitationStatus {
+  OPEN
+  CLOSED
+  EXPIRED
+}
+
+model Squad {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  maxMembers  Int       @default(10)
+  status      SquadStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User @relation("SquadOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members     SquadMember[]
+  invitations SquadInvitation[]
+
+  @@index([ownerId])
+  @@map("squad")
+}
+
+model SquadMember {
+  id        String @id @default(cuid())
+  squadId   String
+  userId    String
+  role      SquadRole @default(MEMBER)
+  status    SquadMemberStatus @default(ACTIVE)
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  squad     Squad @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([squadId, userId])
+  @@index([userId, status])
+  @@index([squadId, status])
+  @@map("squad_member")
+}
+
+model SquadInvitation {
+  id          String @id @default(cuid())
+  squadId     String
+  createdById String
+  codeHash    String @unique
+  email       String?
+  expiresAt   DateTime
+  maxUses     Int @default(1)
+  uses        Int @default(0)
+  status      InvitationStatus @default(OPEN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  squad       Squad @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  createdBy   User @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([squadId, status])
+  @@index([expiresAt])
+  @@map("squad_invitation")
 }
