@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, frontend, backend, error-fixes]
   pull_request:
-    branches: [main, frontend, backend, error-fixes]
+    branches: [main, frontend, backend, error-fixes, feature/f01-auth-implementation]
 
 permissions:
   contents: read
