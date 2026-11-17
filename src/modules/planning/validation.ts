@@ -34,7 +34,15 @@ export const taskFieldsSchema = z.object({
   assigneeId: z.string().min(1).max(128).optional(),
 }).strict();
 export const createTaskSchema = taskFieldsSchema;
-export const updateTaskSchema = taskFieldsSchema.partial().refine(v => Object.keys(v).length > 0);
+export const updateTaskSchema = z.object({
+  title: z.string().trim().min(1).max(120).optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+  dueDate: isoDate.nullable().optional(),
+  dueTime: z.string().regex(/^([01]\\d|2[0-3]):[0-5]\\d$/).nullable().optional(),
+  durationMin: z.number().int().min(1).max(1440).nullable().optional(),
+  priority: z.enum(["NONE", "LOW", "MEDIUM", "HIGH"]).optional(),
+  quadrant: z.enum(["DO", "PLAN", "RECONSIDER", "LEAVE"]).nullable().optional(),
+}).strict().refine(v => Object.keys(v).length > 0);
 export const completeTaskSchema = z.object({ occurrenceDate: isoDate }).strict();
 
 export function asUtcDate(date: string): Date {
