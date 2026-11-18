@@ -1,8 +1,9 @@
 import "server-only";
 import { betterAuth } from "better-auth";
+import { emailOTP } from "better-auth/plugins";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { getPrisma } from "@/db/client";
-import { sendAuthenticationEmail } from "./email";
+import { sendAuthenticationEmail, sendCodeEmail } from "./email";
 
 export function getAuth() {
   const secret = process.env.BETTER_AUTH_SECRET;
@@ -19,6 +20,15 @@ export function getAuth() {
     baseURL,
     database: prismaAdapter(getPrisma(), { provider: "postgresql" }),
     rateLimit: { enabled: true, window: 60, max: 20 },
+    plugins: [emailOTP({
+      otpLength: 6,
+      expiresIn: 600,
+      sendVerificationOnSignUp: true,
+      overrideDefaultEmailVerification: true,
+      async sendVerificationOTP({ email, otp, type }) {
+        await sendCodeEmail({ to: email, code: otp, type });
+      },
+    })],
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
