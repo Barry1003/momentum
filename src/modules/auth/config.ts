@@ -1,55 +1,19 @@
 import "server-only";
-import { betterAuth } from "better-auth";
-import { emailOTP } from "better-auth/plugins";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-import { getPrisma } from "@/db/client";
-import { sendAuthenticationEmail, sendCodeEmail } from "./email";
+import { createNeonAuth } from "@neondatabase/auth/next/server";
 
+/**
+ * Managed Neon Auth is the only authentication authority.
+ * Never accept identity from request payloads, headers supplied by the caller,
+ * or the old local Better Auth session tables.
+ */
 export function getAuth() {
-  const secret = process.env.BETTER_AUTH_SECRET;
-  const baseURL = process.env.BETTER_AUTH_URL;
-  if (!secret || !baseURL) {
-    throw new Error("BETTER_AUTH_SECRET and BETTER_AUTH_URL must be configured");
+  const baseUrl = process.env.NEON_AUTH_BASE_URL;
+  const secret = process.env.NEON_AUTH_COOKIE_SECRET;
+  if (!baseUrl || !secret || secret.length < 32) {
+    throw new Error("NEON_AUTH_BASE_URL and a 32+ character NEON_AUTH_COOKIE_SECRET are required");
   }
-  const googleClientId = process.env.GOOGLE_CLIENT_ID;
-  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const googleEnabled = Boolean(googleClientId && googleClientSecret);
-
-  return betterAuth({
-    secret,
-    baseURL,
-    database: prismaAdapter(getPrisma(), { provider: "postgresql" }),
-    rateLimit: { enabled: true, window: 60, max: 20 },
-    plugins: [emailOTP({
-      otpLength: 6,
-      expiresIn: 600,
-      sendVerificationOnSignUp: true,
-      overrideDefaultEmailVerification: true,
-      async sendVerificationOTP({ email, otp, type }) {
-        await sendCodeEmail({ to: email, code: otp, type });
-      },
-    })],
-    emailAndPassword: {
-      enabled: true,
-      requireEmailVerification: true,
-      sendResetPassword: async ({ user, url }) => {
-        await sendAuthenticationEmail({
-          to: user.email, subject: "Reset your Momentum password", url, action: "reset",
-        });
-      },
-    },
-    emailVerification: {
-      sendOnSignUp: true,
-      autoSignInAfterVerification: true,
-      sendVerificationEmail: async ({ user, url }) => {
-        await sendAuthenticationEmail({
-          to: user.email, subject: "Verify your Momentum email", url, action: "verify",
-        });
-      },
-    },
-    socialProviders: googleEnabled
-      ? { google: { clientId: googleClientId!, clientSecret: googleClientSecret! } }
-      : {},
-    advanced: { defaultCookieAttributes: { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/" } },
+  return createNeonAuth({
+    baseUrl,
+    cookies: { secret },
   });
 }
