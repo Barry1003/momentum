@@ -52,12 +52,18 @@ export function HabitsScreen() {
   const goals = (planner.data?.goals ?? []).filter((goal) => !goal.isPaused).map((goal) => goal.title).concat("Everyday wellbeing");
 
   async function log(habit: Habit) {
-    const earned = await tracker.log(habit.id);
-    if (earned) setMoment(earned);
+    try {
+      const earned = await tracker.log(habit.id);
+      if (earned) setMoment(earned);
+    } catch (cause) {
+      showToast(cause instanceof Error ? cause.message : "Unable to log habit.");
+    }
   }
 
   let body: ReactNode;
-  if (!data) {
+  if (tracker.error) {
+    body = <p role="alert" className="rounded-card bg-surface p-5 font-heading text-body text-warning">{tracker.error.message}</p>;
+  } else if (!data) {
     body = <HabitsLoading />;
   } else if (moment) {
     body = (
