@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { authClient } from "@/frontend/auth/client";
 import { useEffect, useRef, useState } from "react";
 import { Button, Note, ScreenHeader } from "@/frontend/components";
 import { Companion, GreetingBubble, useGreeting } from "@/frontend/companion";
@@ -15,6 +16,7 @@ export default function VerifyEmailPage() {
   const router = useRouter();
   const { data } = useOnboarding();
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isExpired, setIsExpired] = useState(false);
   const [resentNotice, setResentNotice] = useState(false);
@@ -62,29 +64,45 @@ export default function VerifyEmailPage() {
     inputRefs.current[Math.min(pasted.length, CODE_LENGTH - 1)]?.focus();
   }
 
-  function handleVerify() {
-    if (!isComplete) return;
-    // Preview-only examples until the auth service verifies real codes:
-    // 000000 = wrong code, 111111 = expired code.
-    if (code === "000000") {
-      setError("That code didn't work — check and try again.");
-      return;
-    }
-    if (code === "111111") {
-      setIsExpired(true);
-      setError(null);
-      return;
-    }
-    router.push("/onboarding/name");
+  async function handleVerify() {
+    if (!isComplete || !data.email || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await authClient.emailOtp.verifyEmail({ email: data.email, otp: code });
+      if (response.error) {
+        setError(response.error.message || "That code didn't work. Please try again.");
+        return;
+      }
+      router.replace("/onboarding/name");
+      router.refresh();
+    } catch { setError("Could not verify your code. Please try again."); }
+    finally { setBusy(false); }
   }
 
-  function handleResend() {
-    setSecondsLeft(RESEND_SECONDS);
-    setIsExpired(false);
+  async function handleResend() {
+    if (!data.email || busy) {
+      setError("Enter your email before requesting another code.");
+      return;
+    }
+    setBusy(true);
     setError(null);
-    setDigits(Array(CODE_LENGTH).fill(""));
-    setResentNotice(true);
-    inputRefs.current[0]?.focus();
+    setResentNotice(false);
+    try {
+      const response = await authClient.emailOtp.sendVerificationOtp({
+        email: data.email, type: "email-verification",
+      });
+      if (response.error) {
+        setError(response.error.message || "Unable to resend your code.");
+        return;
+      }
+      setSecondsLeft(RESEND_SECONDS);
+      setIsExpired(false);
+      setDigits(Array(CODE_LENGTH).fill(""));
+      setResentNotice(true);
+      inputRefs.current[0]?.focus();
+    } catch { setError("Could not request a new code."); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -153,7 +171,7 @@ export default function VerifyEmailPage() {
             Resend in 0:{secondsLeft.toString().padStart(2, "0")}
           </span>
         ) : (
-          <button type="button" onClick={handleResend} className="font-bold text-accent-strong">
+          <button type="button" onClick={() => void handleResend()} className="font-bold text-accent-strong">
             Resend
           </button>
         )}
@@ -161,7 +179,7 @@ export default function VerifyEmailPage() {
 
       <Note tone="tint">Check spam or promotions. The code works for 10 minutes.</Note>
 
-      <Button variant="primary" disabled={!isComplete} onClick={handleVerify}>
+      <Button variant="primary" disabled={!isComplete || busy} onClick={() => void handleVerify()}>
         Verify and continue
       </Button>
       {isExpired ? (

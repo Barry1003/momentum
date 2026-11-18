@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { onboardingApi } from "@/frontend/onboarding/api";
 import { Button, ScreenHeader } from "@/frontend/components";
 import { cn } from "@/frontend/lib/cn";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
@@ -25,11 +26,18 @@ export default function OnboardingPathPage() {
   const router = useRouter();
   const { data, update } = useOnboarding();
   const [choice, setChoice] = useState(data.path);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleContinue() {
+  async function handleContinue() {
     if (!choice) return;
-    update({ path: choice });
-    router.push(choice === "solo" ? "/onboarding/ready" : "/onboarding/join");
+    setBusy(true); setError(null);
+    try {
+      await onboardingApi.save({ step: "path", path: choice });
+      update({ path: choice });
+      router.push(choice === "solo" ? "/onboarding/ready" : "/onboarding/join");
+    } catch (error) { setError(error instanceof Error ? error.message : "Unable to save your choice."); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -56,7 +64,8 @@ export default function OnboardingPathPage() {
         ))}
       </div>
 
-      <Button variant="primary" disabled={!choice} onClick={handleContinue}>
+      {error ? <p role="alert" className="font-heading text-meta text-warning">{error}</p> : null}
+      <Button variant="primary" disabled={!choice || busy} onClick={() => void handleContinue()}>
         Continue
       </Button>
     </div>

@@ -15,6 +15,10 @@ describe("launch destination", () => {
     expect(resolveLaunchDestination({ status: "signed-in", onboardingComplete: false, hasSquad: false })).toBe("/onboarding/name");
   });
 
+  it("resumes the server-reported onboarding step", () => {
+    expect(resolveLaunchDestination({ status: "signed-in", onboardingComplete: false, hasSquad: false, nextStep: "/onboarding/companion" })).toBe("/onboarding/companion");
+  });
+
   it("distinguishes squad members from solo users after setup", () => {
     expect(resolveLaunchDestination({ status: "signed-in", onboardingComplete: true, hasSquad: true })).toBe("/home?tab=squad");
     expect(resolveLaunchDestination({ status: "signed-in", onboardingComplete: true, hasSquad: false })).toBe("/home");

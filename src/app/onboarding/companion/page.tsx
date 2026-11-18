@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { onboardingApi } from "@/frontend/onboarding/api";
 import { Button, Field, FaceAvatar, ScreenHeader, Tag } from "@/frontend/components";
 import { Companion, GreetingBubble, useGreeting } from "@/frontend/companion";
 import { cn } from "@/frontend/lib/cn";
@@ -21,16 +22,24 @@ export default function CreateCompanionPage() {
   const [look, setLook] = useState(data.companionLook);
   const [name, setName] = useState(data.companionName);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const greeting = useGreeting(500);
 
-  function handleContinue() {
+  async function handleContinue() {
     const result = companionNameSchema.safeParse(name);
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Name your companion.");
       return;
     }
-    update({ companionStyle: style, companionLook: look, companionName: result.data });
-    router.push("/onboarding/privacy");
+    setBusy(true); setError(null);
+    try {
+      await onboardingApi.save({
+        step: "companion", companionStyle: style, companionLook: look, companionName: result.data,
+      });
+      update({ companionStyle: style, companionLook: look, companionName: result.data });
+      router.push("/onboarding/privacy");
+    } catch (error) { setError(error instanceof Error ? error.message : "Unable to save your companion."); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -125,7 +134,7 @@ export default function CreateCompanionPage() {
 
       <p className="font-heading text-meta text-text-muted">You can change style, look and name anytime in Me.</p>
 
-      <Button variant="primary" onClick={handleContinue}>
+      <Button variant="primary" disabled={busy} onClick={() => void handleContinue()}>
         Meet {name || "your companion"}
       </Button>
       <button type="button" onClick={() => router.back()} className="font-heading text-label font-bold text-text-muted">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { dateKicker, greetingFor } from "./growth";
 
 function subscribeMinute(callback: () => void) {
@@ -15,26 +15,20 @@ export function useGreetingLine(): { greeting: string; kicker: string } {
   return { greeting, kicker };
 }
 
-function subscribeNever() {
-  return () => {};
-}
-
-function readDisplayName(): string {
-  try {
-    const stored = window.sessionStorage.getItem("momentum.onboarding");
-    const parsed: unknown = stored ? JSON.parse(stored) : null;
-    const name = (parsed as { displayName?: unknown } | null)?.displayName;
-    if (typeof name === "string" && name.trim()) return name.trim();
-  } catch {
-    // Storage can be unavailable; fall back to the preview name.
-  }
-  return "Ari";
-}
-
-/**
- * Display name from onboarding (preview only — the real value will come from
- * the profile API). Falls back to "Ari", the design's example user.
- */
+/** Read identity from the verified session's profile, not sessionStorage. */
 export function useDisplayName(): string {
-  return useSyncExternalStore(subscribeNever, readDisplayName, () => "Ari");
+  const [displayName, setDisplayName] = useState("Friend");
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/onboarding", {
+      credentials: "same-origin", cache: "no-store", signal: controller.signal,
+    }).then(async response => {
+      if (!response.ok) return;
+      const data = await response.json() as { profile?: { displayName?: string } | null };
+      const name = data.profile?.displayName?.trim();
+      if (name && !controller.signal.aborted) setDisplayName(name);
+    }).catch(() => { /* Keep neutral fallback; never trust a local draft. */ });
+    return () => controller.abort();
+  }, []);
+  return displayName;
 }

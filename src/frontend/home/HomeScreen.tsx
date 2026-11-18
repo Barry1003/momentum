@@ -121,7 +121,7 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
           ? "Quiet days count too."
           : `${greeting}, ${name}.`;
   const headerKicker =
-    tab === "squad" ? `Northstar · ${(squad.data?.members.length ?? 4) + 1} members` : mode === "first" ? "Day 1 · Welcome" : mode === "quiet" ? "My Space · Quiet day" : kicker;
+    tab === "squad" ? squad.squadName ? `${squad.squadName} · ${squad.data?.members.length ?? 0} members` : "Squad Room" : mode === "first" ? "Day 1 · Welcome" : mode === "quiet" ? "My Space · Quiet day" : kicker;
 
   const companion = data?.companion;
   const hero = companion ? (
@@ -166,7 +166,13 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
   );
 
   let body: ReactNode;
-  if (tab === "squad") {
+  if (tab === "squad" && squad.isLoading) {
+    body = <Skeleton className="h-52 rounded-[28px]" />;
+  } else if (tab === "squad" && squad.error) {
+    body = <p role="alert" className="rounded-card bg-surface p-5 font-heading text-body text-warning">Unable to load your squad. Refresh to retry.</p>;
+  } else if (tab === "squad" && !squad.data?.hasSquad) {
+    body = <div className="rounded-card bg-surface p-6 shadow-raised"><h2 className="font-display text-heading font-extrabold">Your Squad Room is waiting</h2><p className="mt-2 font-heading text-body text-text-muted">Create or join a squad when you are ready.</p><Link href="/onboarding/join" className="mt-4 inline-block font-heading font-bold text-accent-strong">Create or join a squad</Link></div>;
+  } else if (tab === "squad") {
     body = (
       <SquadRoom
         members={squad.data?.members ?? []}
@@ -245,6 +251,7 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
       </header>
 
       <SpaceToggle tab={tab} className="mt-5 md:hidden" />
+      <p role="status" className="mt-4 rounded-card bg-surface p-3 font-heading text-meta text-text-muted">Preview content: tasks, habits, growth XP, activity and focus indicators below are examples, not saved account data. Your name and squad membership are loaded from your account.</p>
 
       {tab === "squad" ? (
         <div className="mx-auto mt-6 max-w-[640px]">{body}</div>

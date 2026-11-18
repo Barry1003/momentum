@@ -7,13 +7,17 @@
 export type LaunchIdentity =
   | { status: "checking" }
   | { status: "signed-out"; hasVisitedBefore: boolean }
-  | { status: "signed-in"; onboardingComplete: boolean; hasSquad: boolean };
+  | { status: "signed-in"; onboardingComplete: boolean; hasSquad: boolean; nextStep?: "/onboarding/name" | "/onboarding/companion" | "/onboarding/privacy" | "/onboarding/join" | "/onboarding/ready" };
 
 export type LaunchDestination =
   | null
   | "/onboarding"
   | "/onboarding/sign-in"
   | "/onboarding/name"
+  | "/onboarding/companion"
+  | "/onboarding/privacy"
+  | "/onboarding/join"
+  | "/onboarding/ready"
   | "/home"
   | "/home?tab=squad";
 
@@ -22,7 +26,7 @@ export function resolveLaunchDestination(identity: LaunchIdentity): LaunchDestin
   if (identity.status === "signed-out") {
     return identity.hasVisitedBefore ? "/onboarding/sign-in" : "/onboarding";
   }
-  if (!identity.onboardingComplete) return "/onboarding/name";
+  if (!identity.onboardingComplete) return identity.nextStep ?? "/onboarding/name";
   // Everyone lands on Home (My Space). Squad members open on the Squad Room tab.
   return identity.hasSquad ? "/home?tab=squad" : "/home";
 }
