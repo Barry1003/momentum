@@ -160,10 +160,11 @@ export async function addTask(input:NewTaskInput):Promise<{task:Task}> {
  const squadId=input.shareWithSquad?raw.squads[0]?.squadId:undefined;
  if(input.shareWithSquad && !squadId)throw new Error("Join a squad before sharing tasks");
  if(input.repeats && input.repeats!=="never")throw new Error("Recurring tasks are not yet available");
- if(input.when==="pickDate")throw new Error("Date selection is not yet available");
- const dueDate=input.when==="noDate"?undefined:input.when==="tomorrow"?addDays(day,1):day;
+ if(input.when==="pickDate"&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(input.selectedDate??""))throw new Error("Choose a valid date");
+ const dueDate=input.when==="noDate"?undefined:input.when==="tomorrow"?addDays(day,1):input.when==="pickDate"?input.selectedDate:day;
  const result=await request<{task:RawTask}>("/api/tasks","POST",{
   title:input.title,dueDate,durationMin:input.durationMinutes,
+  ...(input.goalId?{goalId:input.goalId}:{}),
   priority:(input.priority??"NONE").toUpperCase(),
   visibility:squadId?"SQUAD":"PRIVATE",...(squadId?{squadId}:{}),
  });
@@ -172,10 +173,12 @@ export async function addTask(input:NewTaskInput):Promise<{task:Task}> {
 export async function addHabit(input:NewHabitInput):Promise<{habit:Habit}> {
  const raw=await workspace(),squadId=input.shareWithSquad?raw.squads[0]?.squadId:undefined;
  if(input.shareWithSquad&&!squadId)throw new Error("Join a squad before sharing habits");
+ const selectedGoal=input.goalName?raw.goals.find(g=>g.title===input.goalName):undefined;
  const result=await request<{habit:RawHabit}>("/api/habits","POST",{
   name:input.name,targetType:input.kind==="timer"?"DURATION":input.kind==="target"||input.targetCount>1?"COUNT":"CHECK",
   targetValue:input.targetCount,unit:input.unit||undefined,reminderTime:input.reminderTime||undefined,
   scheduleDays:input.scheduleDays??[0,1,2,3,4,5,6],
+  ...(selectedGoal?{goalId:selectedGoal.id}:{}),
   ...(input.startsTomorrow?{startsOn:addDays(localToday(),1)}:{}),
   ...(squadId?{sharedWithSquadId:squadId}:{}),
  });
