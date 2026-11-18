@@ -64,7 +64,6 @@ export function LaunchScreen() {
 
   useEffect(() => {
     let active = true;
-    setAuthError(false);
     void resolveIdentity().then((identity) => {
       if (active) {
         setDestination(resolveLaunchDestination(identity));
