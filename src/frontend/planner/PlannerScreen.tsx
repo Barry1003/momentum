@@ -43,7 +43,7 @@ interface Celebration {
 export function PlannerScreen({ today }: { today: UseTodayResult }) {
   const params = useSearchParams();
   const router = useRouter();
-  const { showToast } = useShell();
+  const { showToast, openQuickCreate } = useShell();
   const planner = usePlanner();
   const [celebration, setCelebration] = useState<Celebration | null>(null);
 
@@ -103,7 +103,7 @@ export function PlannerScreen({ today }: { today: UseTodayResult }) {
       />
     );
   } else if (view === "goals") {
-    body = <GoalsView planner={planner.data} onNewGoal={() => showToast("Goal setup arrives with the Goals screens (03c).")} />;
+    body = <GoalsView planner={planner.data} onNewGoal={() => openQuickCreate("goal")} />;
   } else if (view === "shared") {
     body = <SharedView planner={planner.data} />;
   } else if (view === "add") {
@@ -156,7 +156,7 @@ export function PlannerScreen({ today }: { today: UseTodayResult }) {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {body}
       <p role="status" className="mt-6 font-heading text-meta text-text-muted">
-        Preview: planner tasks, goals and XP here are examples, not saved account data yet.
+        Tasks and goals are saved to your account. XP and recurring schedules are not yet enabled.
       </p>
       {celebration && companion ? (
         <TaskDoneSheet
