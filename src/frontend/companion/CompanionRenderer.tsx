@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { ReactNode } from "react";
 import ariAdult from "../assets/companion/ari-adult.png";
 import ariAdultFace from "../assets/companion/ari-adult-face.png";
 import ariChild from "../assets/companion/ari-child.png";
@@ -21,7 +22,7 @@ export interface CompanionRendererProps {
   onReactionEnd?: () => void;
 }
 
-const STAGE_ART: Record<GrowthStage, { full: typeof ariChild; face: typeof ariChildFace }> = {
+export const STAGE_ART: Record<GrowthStage, { full: typeof ariChild; face: typeof ariChildFace }> = {
   child: { full: ariChild, face: ariChildFace },
   preteen: { full: ariPreteen, face: ariPreteenFace },
   teen: { full: ariTeen, face: ariTeenFace },
@@ -65,7 +66,14 @@ const IMAGE_CLASS: Record<Exclude<CompanionSize, "face">, string> = {
  * (or a Rive/Live2D rig). When those exist, swap the renderer in
  * activeRenderer.ts — no screen needs to change.
  */
-export function PngCompanionRenderer({ stage, reaction, look, size, reduceMotion, onReactionEnd }: CompanionRendererProps) {
+export interface PngCompanionRendererProps extends CompanionRendererProps {
+  /** Layer drawn exactly over the art's box (used by the animated renderer). */
+  overlay?: ReactNode;
+  /** Hide the still art (keeps its layout box) while an overlay plays. */
+  hideArt?: boolean;
+}
+
+export function PngCompanionRenderer({ stage, reaction, look, size, reduceMotion, onReactionEnd, overlay, hideArt = false }: PngCompanionRendererProps) {
   const outfit = SUPPORTED_OUTFITS.includes(look.outfit) ? look.outfit : "original";
   void outfit; // only one outfit exists today; kept for the future art swap
 
@@ -87,7 +95,7 @@ export function PngCompanionRenderer({ stage, reaction, look, size, reduceMotion
       )}
     >
       <span
-        className={cn("companion-body", motionClass)}
+        className={cn("companion-body relative", motionClass)}
         onAnimationEnd={(event) => {
           if (event.target === event.currentTarget) handleAnimationEnd?.();
         }}
@@ -96,9 +104,10 @@ export function PngCompanionRenderer({ stage, reaction, look, size, reduceMotion
           src={art.full}
           alt=""
           draggable={false}
-          className={cn("select-none", IMAGE_CLASS[size])}
+          className={cn("block select-none", IMAGE_CLASS[size], hideArt ? "opacity-0" : "")}
           priority={size !== "card"}
         />
+        {overlay}
       </span>
       {size === "bust" ? null : (
         <span aria-hidden className={cn("companion-shadow", reduceMotion ? "" : "animate-companion-shadow")} />

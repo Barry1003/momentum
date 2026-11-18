@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getHabits, incrementHabit } from "../mocks/repository";
+import { getHabits, incrementHabit } from "../api/liveRepository";
 import type { HabitsData } from "../mocks/types";
 
 export interface UseHabitsResult {

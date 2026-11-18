@@ -21,16 +21,29 @@ async function resolveIdentity(): Promise<LaunchIdentity> {
   }
 
   try {
-    const response = await fetch("/api/me", { credentials: "same-origin", cache: "no-store" });
-    if (!response.ok) return { status: "signed-out", hasVisitedBefore: visited };
-    const payload: unknown = await response.json();
-    const value = payload as { user?: { id?: string }; profile?: { displayName?: string } | null };
-    if (!value?.user?.id) return { status: "signed-out", hasVisitedBefore: visited };
-    // Server identity is authoritative. Profile completion remains a
-    // provisional UX decision until an onboarding API exists.
-    return { status: "signed-in", onboardingComplete: Boolean(value.profile?.displayName), hasSquad: false };
+    const response = await fetch("/api/onboarding", { credentials: "same-origin", cache: "no-store" });
+    if (response.status === 401 || response.status === 403) {
+      return { status: "signed-out", hasVisitedBefore: visited };
+    }
+    if (!response.ok) return { status: "checking" };
+    const value: unknown = await response.json();
+    const state = value as {
+      complete?: boolean;
+      hasSquad?: boolean;
+      destination?: string;
+    };
+    const nextStep = ["/onboarding/name", "/onboarding/companion", "/onboarding/privacy", "/onboarding/join", "/onboarding/ready"].includes(state.destination || "")
+      ? state.destination as "/onboarding/name" | "/onboarding/companion" | "/onboarding/privacy" | "/onboarding/join" | "/onboarding/ready"
+      : undefined;
+    return {
+      status: "signed-in",
+      onboardingComplete: state.complete === true,
+      hasSquad: state.hasSquad === true,
+      nextStep,
+    };
   } catch {
-    return { status: "signed-out", hasVisitedBefore: visited };
+    // A network failure is not proof that the session expired.
+    return { status: "checking" };
   }
 }
 
@@ -46,16 +59,21 @@ export function LaunchScreen() {
   const [destination, setDestination] = useState<LaunchDestination>(null);
   const [isSplashDone, setIsSplashDone] = useState(false);
   const [hasWaved, setHasWaved] = useState(false);
+  const [authError, setAuthError] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let active = true;
     void resolveIdentity().then((identity) => {
-      if (active) setDestination(resolveLaunchDestination(identity));
+      if (active) {
+        setDestination(resolveLaunchDestination(identity));
+        setAuthError(identity.status === "checking");
+      }
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [retry]);
 
   useEffect(() => {
     const done = window.setTimeout(() => setIsSplashDone(true), reduceMotion ? REDUCED_MOTION_SPLASH_MS : SPLASH_MS);
@@ -131,8 +149,9 @@ export function LaunchScreen() {
         Skip
       </button>
       <p className="sr-only" role="status" aria-live="polite">
-        {destination ? "Momentum is ready" : "Starting Momentum"}
+        {destination ? "Momentum is ready" : authError ? "Account service unavailable" : "Starting Momentum"}
       </p>
+      {authError ? <button type="button" onClick={() => setRetry(v => v + 1)} className="absolute top-20 right-5 z-20 rounded-full bg-white px-4 py-2 font-heading text-meta font-bold text-accent-strong">Retry connection</button> : null}
     </main>
   );
 }

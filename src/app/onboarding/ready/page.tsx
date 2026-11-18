@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Button, StatsRow } from "@/frontend/components";
 import { Companion, GreetingBubble, type CompanionReaction } from "@/frontend/companion";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
+import { onboardingApi } from "@/frontend/onboarding/api";
 import { Twinkle } from "@/frontend/onboarding/SceneDecor";
 import { StepShell } from "@/frontend/onboarding/StepShell";
 
@@ -14,6 +15,8 @@ export default function OnboardingReadyPage() {
   const [reaction, setReaction] = useState<CompanionReaction>("idle");
   const [hasCheered, setHasCheered] = useState(false);
   const companionName = data.companionName || "Ari";
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -23,16 +26,15 @@ export default function OnboardingReadyPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  function finish() {
-    // Preview-only state; backend session and squad membership are never
-    // inferred from this value. Persist only non-sensitive UI preference.
+  async function finish() {
+    setBusy(true); setError(null);
     try {
-      localStorage.setItem("momentum.hasVisited", "yes");
-      localStorage.setItem("momentum.onboarding.previewComplete", "yes");
-    } catch {
-      // Storage can be unavailable in a private or restricted browser.
-    }
-    router.push(data.path === "squad" ? "/home" : "/my-space");
+      const saved = await onboardingApi.complete();
+      try { localStorage.setItem("momentum.hasVisited", "yes"); } catch { /* restricted storage */ }
+      router.replace(saved.destination);
+      router.refresh();
+    } catch (error) { setError(error instanceof Error ? error.message : "Unable to finish setup."); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -65,8 +67,9 @@ export default function OnboardingReadyPage() {
           </p>
         </div>
         <StatsRow className="w-full" stats={[{ value: "Child", label: "Stage 1 of 5" }, { value: "0 XP", label: "To start" }]} />
-        <p className="text-center font-heading text-meta text-text-muted">Preview mode: your setup isn&apos;t saved to an account yet.</p>
-        <Button variant="primary" onClick={finish}>
+        <p className="text-center font-heading text-meta text-text-muted">Your setup is saved securely to your account.</p>
+        {error ? <p role="alert" className="font-heading text-meta text-warning">{error}</p> : null}
+        <Button variant="primary" disabled={busy} onClick={() => void finish()}>
           {data.path === "squad" ? "Enter the Squad Room" : "Go to My Space"}
         </Button>
       </div>

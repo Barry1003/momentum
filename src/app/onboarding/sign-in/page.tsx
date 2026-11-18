@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/frontend/auth/client";
 import { useState } from "react";
 import { Button } from "@/frontend/components";
 import { GoogleMark } from "@/frontend/components/GoogleMark";
@@ -10,12 +12,14 @@ import { AppleMark, MailIcon } from "@/frontend/onboarding/icons";
 import { emailSchema } from "@/frontend/onboarding/schemas";
 
 export default function SignInPage() {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  function handleLogin() {
+  async function handleLogin() {
     const result = emailSchema.safeParse(email);
     if (!result.success) {
       setEmailError(result.error.issues[0]?.message ?? "Enter your email.");
@@ -25,8 +29,18 @@ export default function SignInPage() {
       setNotice("Enter your password to log in.");
       return;
     }
-    // Authentication is a separate backend decision; never fake a session.
-    setNotice("Log in isn’t connected yet in this preview. Nothing was sent.");
+    setBusy(true);
+    setNotice(null);
+    try {
+      const response = await authClient.signIn.email({ email: result.data, password });
+      if (response.error) {
+        setNotice(response.error.message || "Unable to sign in. Check your details.");
+        return;
+      }
+      router.replace("/");
+      router.refresh();
+    } catch { setNotice("Could not contact the account service."); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -77,7 +91,7 @@ export default function SignInPage() {
         <Link href="/onboarding/cant-get-in" className="self-end pr-2 font-heading text-meta font-bold text-accent-strong">
           Forgot password?
         </Link>
-        <Button type="submit" fullWidth={false} className="w-full">
+        <Button type="submit" disabled={busy} fullWidth={false} className="w-full">
           Log in
         </Button>
       </form>
@@ -89,9 +103,18 @@ export default function SignInPage() {
       ) : null}
 
       <SocialButtons
-        onSelect={(provider) =>
-          setNotice(`${provider === "google" ? "Google" : "Apple"} sign-in will work once accounts are connected. No account was used.`)
-        }
+        onSelect={async (provider) => {
+          if (provider === "apple") {
+            setNotice("Apple sign-in is not available yet. Use Google or email.");
+            return;
+          }
+          setBusy(true);
+          try {
+            const response = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+            if (response.error) setNotice(response.error.message || "Google sign-in failed.");
+          } catch { setNotice("Could not start Google sign-in."); }
+          finally { setBusy(false); }
+        }}
         google={<GoogleMark className="h-6 w-6" />}
         apple={<AppleMark className="h-6 w-6 text-text" />}
       />

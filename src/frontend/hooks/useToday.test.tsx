@@ -1,24 +1,32 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useToday } from "./useToday";
 
-describe("useToday", () => {
-  it("loads today's data and applies the server-reported companion state after completing a task", async () => {
+vi.mock("../api/liveRepository", () => ({
+  getToday: vi.fn(async () => ({
+    date: "2026-11-18",
+    companion: { stage: "child", xp: 0, xpToNextStage: null },
+    tasks: [{ id: "task-1", title: "Read today", isDone: false, isShared: false }],
+    habits: [], isCheckInPromptVisible: false,
+  })),
+  completeTask: vi.fn(async () => ({
+    task: { id: "task-1", title: "Read today", isDone: true, isShared: false },
+    companion: { stage: "child", xp: 0, xpToNextStage: null },
+    xpAwarded: 0,
+  })),
+  undoCompleteTask: vi.fn(),
+  addTask: vi.fn(), addHabit: vi.fn(), incrementHabit: vi.fn(),
+}));
+
+describe("useToday live API contract", () => {
+  it("loads account data and preserves server-reported XP without inventing rewards", async () => {
     const { result } = renderHook(() => useToday());
-
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    const task = result.current.data?.tasks.find((item) => !item.isDone);
-    const xpBefore = result.current.data?.companion.xp ?? 0;
-    expect(task).toBeDefined();
-
+    expect(result.current.data?.tasks[0]?.isDone).toBe(false);
     await act(async () => {
-      await result.current.completeTask(task!.id);
+      expect(await result.current.completeTask("task-1")).toBe(0);
     });
-
-    const updatedTask = result.current.data?.tasks.find((item) => item.id === task!.id);
-    expect(updatedTask?.isDone).toBe(true);
-    // The hook only ever applies the companion value the mock repository
-    // returns — it never derives XP itself.
-    expect(result.current.data?.companion.xp).toBeGreaterThan(xpBefore);
+    expect(result.current.data?.tasks[0]?.isDone).toBe(true);
+    expect(result.current.data?.companion.xp).toBe(0);
   });
 });

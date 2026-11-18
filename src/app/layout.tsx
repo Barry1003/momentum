@@ -17,7 +17,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Momentum | Engineering Foundation",
+  title: { default: "Momentum", template: "%s · Momentum" },
   description: "Momentum helps small groups grow through shared accountability.",
 };
 

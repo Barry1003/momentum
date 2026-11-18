@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { onboardingApi } from "@/frontend/onboarding/api";
 import { Button, Field, Note, ScreenHeader } from "@/frontend/components";
 import { CompanionDialogue } from "@/frontend/onboarding/CompanionDialogue";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
@@ -20,15 +21,21 @@ export default function YourNamePage() {
   const { data, update } = useOnboarding();
   const [name, setName] = useState(data.displayName);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  function handleContinue() {
+  async function handleContinue() {
     const result = displayNameSchema.safeParse(name);
     if (!result.success) {
       setError(result.error.issues[0]?.message ?? "Enter a display name.");
       return;
     }
-    update({ displayName: result.data });
-    router.push("/onboarding/companion");
+    setBusy(true); setError(null);
+    try {
+      await onboardingApi.save({ step: "name", displayName: result.data });
+      update({ displayName: result.data });
+      router.push("/onboarding/companion");
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not save your name."); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -50,7 +57,7 @@ export default function YourNamePage() {
         errorText={error ?? undefined}
       />
       <Note tone="tint">This is the name your squad sees, if you join one.</Note>
-      <Button variant="primary" onClick={handleContinue}>Continue</Button>
+      <Button variant="primary" disabled={busy} onClick={() => void handleContinue()}>Continue</Button>
     </div>
     </StepShell>
   );

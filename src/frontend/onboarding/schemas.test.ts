@@ -29,8 +29,8 @@ describe("onboarding helpers", () => {
     expect(passwordScore("Abcdefghijk1!")).toBe(4);
   });
 
-  it("accepts squad invite codes in any case and rejects malformed ones", () => {
-    expect(squadCodeSchema.safeParse("north-4821").success).toBe(true);
-    expect(squadCodeSchema.safeParse("NORTH4821").success).toBe(false);
+  it("requires unguessable invitation tokens", () => {
+    expect(squadCodeSchema.safeParse("aB3_xY7-r0PqZ1mNcJtV8kL2sD6fGh9wUiE4oQ5p").success).toBe(true);
+    expect(squadCodeSchema.safeParse("NORTH-4821").success).toBe(false);
   });
 });
