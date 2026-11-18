@@ -87,13 +87,25 @@ export function BellButton() {
 }
 
 /** Header for the sub-screens: back to Today, kicker, title and a quiet subtitle. */
-export function SubHeader({ kicker, title, subtitle }: { kicker: string; title: string; subtitle?: string }) {
+export function SubHeader({
+  kicker,
+  title,
+  subtitle,
+  backHref = "/planner",
+  backLabel = "Back to today",
+}: {
+  kicker: string;
+  title: string;
+  subtitle?: string;
+  backHref?: string;
+  backLabel?: string;
+}) {
   return (
     <header className="flex items-start justify-between gap-4">
       <div className="flex items-start gap-3">
         <Link
-          href="/planner"
-          aria-label="Back to today"
+          href={backHref}
+          aria-label={backLabel}
           className="mt-3 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface text-accent-strong shadow-raised md:hidden"
         >
           <BackIcon className="h-4 w-4" />
@@ -111,11 +123,11 @@ export function SubHeader({ kicker, title, subtitle }: { kicker: string; title: 
   );
 }
 
-export function PlusButton({ href }: { href: string }) {
+export function PlusButton({ href, label = "Add a task" }: { href: string; label?: string }) {
   return (
     <Link
       href={href}
-      aria-label="Add a task"
+      aria-label={label}
       className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-surface text-text shadow-raised"
     >
       <PlusIcon className="h-5 w-5" />

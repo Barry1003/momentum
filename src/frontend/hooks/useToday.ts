@@ -88,6 +88,7 @@ export function useToday(): UseTodayResult {
 
   const handleAddHabit = useCallback(async (input: NewHabitInput) => {
     const { habit } = await addHabit(input);
+    if (!habit.isScheduledToday) return;
     setData((previous) => (previous ? { ...previous, habits: [...previous.habits, habit] } : previous));
   }, []);
 
