@@ -1,17 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { addHabit, addTask, completeTask, getToday, incrementHabit } from "../mocks/repository";
-import type { NewHabitInput, NewTaskInput, TodayData } from "../mocks/types";
+import { addHabit, addTask, completeTask, getToday, incrementHabit, undoCompleteTask } from "../mocks/repository";
+import type { NewHabitInput, NewTaskInput, Task, TodayData } from "../mocks/types";
 
 export interface UseTodayResult {
   data: TodayData | null;
   isLoading: boolean;
   error: Error | null;
-  completeTask: (taskId: string) => Promise<void>;
+  /** Resolves with the XP the server awarded, for the celebration. */
+  completeTask: (taskId: string) => Promise<number>;
+  undoCompleteTask: (taskId: string) => Promise<void>;
   incrementHabit: (habitId: string) => Promise<void>;
   addTask: (input: NewTaskInput) => Promise<void>;
   addHabit: (input: NewHabitInput) => Promise<void>;
+  /** Put a task the server already created (e.g. moved from yesterday) into today's list. */
+  receiveTask: (task: Task) => void;
 }
 
 export function useToday(): UseTodayResult {
@@ -37,7 +41,7 @@ export function useToday(): UseTodayResult {
   }, []);
 
   const handleCompleteTask = useCallback(async (taskId: string) => {
-    const { task, companion } = await completeTask(taskId);
+    const { task, companion, xpAwarded } = await completeTask(taskId);
     setData((previous) =>
       previous
         ? {
@@ -45,6 +49,24 @@ export function useToday(): UseTodayResult {
             companion,
             tasks: previous.tasks.map((item) => (item.id === task.id ? task : item)),
           }
+        : previous,
+    );
+    return xpAwarded;
+  }, []);
+
+  const handleUndoCompleteTask = useCallback(async (taskId: string) => {
+    const { task, companion } = await undoCompleteTask(taskId);
+    setData((previous) =>
+      previous
+        ? { ...previous, companion, tasks: previous.tasks.map((item) => (item.id === task.id ? task : item)) }
+        : previous,
+    );
+  }, []);
+
+  const receiveTask = useCallback((task: Task) => {
+    setData((previous) =>
+      previous && !previous.tasks.some((item) => item.id === task.id)
+        ? { ...previous, tasks: [...previous.tasks, task] }
         : previous,
     );
   }, []);
@@ -60,6 +82,7 @@ export function useToday(): UseTodayResult {
 
   const handleAddTask = useCallback(async (input: NewTaskInput) => {
     const { task } = await addTask(input);
+    if ((input.when ?? "today") !== "today") return;
     setData((previous) => (previous ? { ...previous, tasks: [...previous.tasks, task] } : previous));
   }, []);
 
@@ -73,6 +96,8 @@ export function useToday(): UseTodayResult {
     isLoading,
     error,
     completeTask: handleCompleteTask,
+    undoCompleteTask: handleUndoCompleteTask,
+    receiveTask,
     incrementHabit: handleIncrementHabit,
     addTask: handleAddTask,
     addHabit: handleAddHabit,

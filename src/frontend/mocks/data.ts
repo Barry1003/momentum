@@ -1,4 +1,4 @@
-import type { CompanionState, Habit, NotificationItem, SquadMember, Task } from "./types";
+import type { CompanionState, Habit, NotificationItem, PlannerData, SquadMember, Task } from "./types";
 
 export const mockCompanion: CompanionState = {
   stage: "teen",
@@ -7,9 +7,9 @@ export const mockCompanion: CompanionState = {
 };
 
 export const mockTasks: Task[] = [
-  { id: "task-1", title: "Review JS closures", isDone: false, durationMinutes: 25, category: "Development", isShared: false },
-  { id: "task-2", title: "Read 10 pages", isDone: true, durationMinutes: 20, category: "Reading", isShared: false },
-  { id: "task-3", title: "Walk for 20 minutes", isDone: false, durationMinutes: 20, category: "Wellness", isShared: true, sharedByName: "Northstar" },
+  { id: "task-1", title: "Review JS closures", isDone: false, time: "10:00", durationMinutes: 25, category: "Development", goalName: "Confident developer", isShared: false },
+  { id: "task-2", title: "Read 10 pages", isDone: true, time: "08:30", durationMinutes: 20, category: "Reading", goalName: "Read consistently", isShared: false },
+  { id: "task-3", title: "Walk for 20 minutes", isDone: false, time: "15:00", durationMinutes: 20, category: "Wellness", isShared: true, sharedByName: "Northstar" },
 ];
 
 export const mockHabits: Habit[] = [
@@ -32,3 +32,54 @@ export const mockNotifications: NotificationItem[] = [
   { id: "n-4", kind: "review", title: "Your 15-day check-in opens soon", body: "2 December · three short questions", when: "Mon", group: "earlier", isRead: true },
   { id: "n-5", kind: "squad", fromName: "Kemi", title: "Kemi finished “Read chapter 3”", body: "A shared task in Northstar", when: "Sun", group: "earlier", isRead: true },
 ];
+
+export const mockPlanner: PlannerData = {
+  carryOver: { id: "carry-1", title: "Draft portfolio intro" },
+  suggestedActionCount: 2,
+  habitsPerDay: 3,
+  weekTaskCounts: [2, 3, 2, 1, 3, 0, 1],
+  weekTasks: {
+    0: [
+      { id: "w-0-1", title: "Plan the week", detail: "09:00 · 15 min", isDone: true, isShared: false },
+      { id: "w-0-2", title: "Gym session", detail: "18:00 · Wellbeing", isDone: true, isShared: false },
+    ],
+    1: [
+      { id: "w-1-1", title: "Review JS closures", detail: "09:00 · 25 min", isDone: true, isShared: false },
+      { id: "w-1-2", title: "Walk for 20 minutes", detail: "17:30 · Wellbeing", isDone: false, isShared: false },
+      { id: "w-1-3", title: "Read chapter 3", detail: "Northstar · shared", isDone: false, isShared: true },
+    ],
+    2: [
+      { id: "w-2-1", title: "Review JS closures", detail: "09:00 · 25 min", isDone: true, isShared: false },
+      { id: "w-2-2", title: "Walk for 20 minutes", detail: "17:30 · Wellbeing", isDone: false, isShared: false },
+      { id: "w-2-3", title: "Read chapter 3", detail: "Northstar · shared", isDone: false, isShared: true },
+    ],
+    3: [{ id: "w-3-1", title: "Read chapter 3", detail: "Northstar · shared", isDone: false, isShared: true }],
+    4: [
+      { id: "w-4-1", title: "Draft portfolio intro", detail: "High priority", isDone: false, isShared: false },
+      { id: "w-4-2", title: "Review launch copy", detail: "Northstar · shared", isDone: false, isShared: true },
+      { id: "w-4-3", title: "Walk for 20 minutes", detail: "17:30 · Wellbeing", isDone: false, isShared: false },
+    ],
+    5: [],
+    6: [{ id: "w-6-1", title: "Weekly review", detail: "10:00 · 15 min", isDone: false, isShared: false }],
+  },
+  allTasks: [
+    { id: "t-1", title: "Set up workspace", detail: "Was due Fri 13", group: "overdue", isDone: false, isShared: false, hasDate: true, badge: "Move" },
+    { id: "t-2", title: "Walk for 20 minutes", detail: "Daily · Wellbeing", group: "thisWeek", isDone: false, isShared: false, hasDate: true },
+    { id: "t-3", title: "Read chapter 3", detail: "Thu · Northstar", group: "thisWeek", isDone: false, isShared: true, hasDate: true, badge: "Shared" },
+    { id: "t-4", title: "Draft portfolio intro", detail: "Fri · High", group: "thisWeek", isDone: false, isShared: false, hasDate: true, badge: "P1" },
+    { id: "t-5", title: "Ask for feedback", detail: "Weekly from 23 Nov", group: "later", isDone: false, isShared: false, hasDate: true },
+    { id: "t-6", title: "Sketch a side project", detail: "Someday", group: "later", isDone: false, isShared: false, hasDate: false },
+    { id: "t-7", title: "Read 10 pages", detail: "Done today · Reading", group: "thisWeek", isDone: true, isShared: false, hasDate: true },
+    { id: "t-8", title: "Plan the week", detail: "Done Mon", group: "thisWeek", isDone: true, isShared: false, hasDate: true },
+  ],
+  goals: [
+    { id: "g-1", title: "Become a confident developer", doneCount: 18, totalCount: 29, detail: "Personal · target 31 Dec", isShared: false, isPaused: false },
+    { id: "g-2", title: "Build our launch together", doneCount: 23, totalCount: 34, detail: "Northstar · shared · 30 Dec", isShared: true, isPaused: false },
+    { id: "g-3", title: "Run a 5K", doneCount: 3, totalCount: 15, detail: "Personal · no target", isShared: false, isPaused: true },
+  ],
+  shared: [
+    { id: "s-1", title: "Read chapter 3", assignedBy: "Zara", due: "Thu" },
+    { id: "s-2", title: "Review launch copy", assignedBy: "Malik", due: "Fri" },
+  ],
+  squadName: "Northstar",
+};

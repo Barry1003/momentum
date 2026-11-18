@@ -20,7 +20,14 @@ export interface Task {
   durationMinutes?: number;
   /** Area or goal label, e.g. "Development". */
   category?: string;
+  /** Short name of the goal this task feeds, e.g. "Confident developer". */
+  goalName?: string;
+  priority?: TaskPriority;
 }
+
+export type TaskPriority = "high" | "medium" | "low";
+export type TaskWhen = "today" | "tomorrow" | "pickDate" | "noDate";
+export type TaskRepeat = "never" | "daily" | "weekly" | "monthly";
 
 export interface Habit {
   id: string;
@@ -58,6 +65,64 @@ export interface NewTaskInput {
   title: string;
   durationMinutes?: number;
   category?: string;
+  when?: TaskWhen;
+  priority?: TaskPriority;
+  goalName?: string;
+  repeats?: TaskRepeat;
+  /** Sharing is always a choice: tasks are private unless this is true. */
+  shareWithSquad?: boolean;
+}
+
+/** A task on another day of the week view. */
+export interface PlannerDayTask {
+  id: string;
+  title: string;
+  detail: string;
+  isDone: boolean;
+  isShared: boolean;
+}
+
+export interface PlannerListTask {
+  id: string;
+  title: string;
+  detail: string;
+  group: "overdue" | "thisWeek" | "later";
+  isDone: boolean;
+  isShared: boolean;
+  hasDate: boolean;
+  badge?: "Move" | "Shared" | "P1";
+}
+
+export interface PlannerGoal {
+  id: string;
+  title: string;
+  doneCount: number;
+  totalCount: number;
+  detail: string;
+  isShared: boolean;
+  isPaused: boolean;
+}
+
+export interface SharedAssignment {
+  id: string;
+  title: string;
+  assignedBy: string;
+  due: string;
+}
+
+export interface PlannerData {
+  /** Unfinished from yesterday, offered back without pressure. */
+  carryOver: { id: string; title: string } | null;
+  suggestedActionCount: number;
+  habitsPerDay: number;
+  /** Tasks per weekday, Monday first, for the dots under the week strip. */
+  weekTaskCounts: number[];
+  /** Other days' tasks, keyed by weekday (0 = Monday). Today's come from TodayData. */
+  weekTasks: Record<number, PlannerDayTask[]>;
+  allTasks: PlannerListTask[];
+  goals: PlannerGoal[];
+  shared: SharedAssignment[];
+  squadName: string;
 }
 
 export interface NewHabitInput {
