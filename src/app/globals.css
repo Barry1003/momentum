@@ -148,3 +148,32 @@ a {
 .animate-companion-bounce-lg {
   animation: companion-bounce-lg 1.2s ease-out 1;
 }
+
+
+/* Momentum launch treatment using the existing branded SVG mark. */
+.momentum-launch {
+  background: radial-gradient(circle at 50% 40%, #fff9ed 0%, #f4edfa 56%, #eee7ff 100%);
+}
+.momentum-launch-glow {
+  position: absolute;
+  width: min(88vw, 520px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(166,133,234,.32), rgba(166,133,234,0) 68%);
+  animation: momentum-glow 2.4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.momentum-launch-mark { animation: momentum-rise .8s cubic-bezier(.2,.8,.2,1) both; }
+.momentum-launch-dot { animation: momentum-pulse .9s ease-in-out infinite alternate; }
+@keyframes momentum-rise {
+  from { opacity: 0; transform: translateY(22px) scale(.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes momentum-glow {
+  from { opacity: .55; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1.08); }
+}
+@keyframes momentum-pulse { to { opacity: .3; transform: scale(.7); } }
+@media (prefers-reduced-motion: reduce) {
+  .momentum-launch-glow, .momentum-launch-mark, .momentum-launch-dot { animation: none; }
+}
