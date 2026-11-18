@@ -24,7 +24,8 @@ export async function createHabit(userId: string, input: CreateHabit) {
     data: {
       ownerId: userId, name: input.name, description: input.description, category: input.category,
       icon: input.icon, targetType: input.targetType, targetValue: input.targetValue, unit: input.unit,
-      reminderTime: input.reminderTime, goalId: input.goalId ?? null,
+      reminderTime: input.reminderTime, scheduleDays: input.scheduleDays ?? [0,1,2,3,4,5,6],
+      startsOn: input.startsOn ? asUtcDate(input.startsOn) : null, goalId: input.goalId ?? null,
       sharedWithSquadId: input.sharedWithSquadId ?? null,
     },
   });
@@ -61,6 +62,7 @@ export async function changeHabitPause(id: string, userId: string, paused: boole
     where: { id }, data: {
       status: paused ? "PAUSED" : "ACTIVE",
       pausedAt: paused ? habit.pausedAt ?? new Date() : null,
+      pausedUntil: null,
     },
   });
 }
