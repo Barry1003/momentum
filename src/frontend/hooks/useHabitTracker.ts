@@ -10,7 +10,7 @@ import {
   resumeHabit,
   updateHabit,
   type HabitChanges,
-} from "../mocks/repository";
+} from "../api/liveRepository";
 import type { ConsistencyMoment, HabitTracker, NewHabitInput } from "../mocks/types";
 
 export interface UseHabitTrackerResult {
