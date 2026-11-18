@@ -39,7 +39,22 @@ export interface Habit {
   icon?: "water" | "move" | "read" | "sparkle";
   /** Unit for counted habits, e.g. "glasses". */
   unit?: string;
+  /** How it is logged: a single tick, a count toward a target, or minutes. */
+  kind?: HabitKind;
+  /** Short line under the name, e.g. "20 min walk or stretch". */
+  detail?: string;
+  /** Weekdays it is scheduled on, Monday = 0. */
+  scheduleDays?: number[];
+  startsOn?: string;
+  pausedFrom?: string | null;
+  pausedUntil?: string | null;
+  reminderTime?: string | null;
+  goalName?: string | null;
+  shareWithSquad?: boolean;
+  archived?: boolean;
 }
+
+export type HabitKind = "tick" | "target" | "timer";
 
 export interface SquadMember {
   id: string;
@@ -128,6 +143,30 @@ export interface PlannerData {
 export interface NewHabitInput {
   name: string;
   targetCount: number;
+  kind?: HabitKind;
+  unit?: string;
+  scheduleDays?: number[];
+  reminderTime?: string | null;
+  goalName?: string | null;
+  shareWithSquad?: boolean;
+  /** Habits made on the Habits screen start tomorrow; Quick create starts today. */
+  startsTomorrow?: boolean;
+}
+
+export interface HabitTracker {
+  todayIso: string;
+  habits: Habit[];
+  /** Count logged per habit per day: history[habitId][iso]. */
+  history: Record<string, Record<string, number>>;
+  /** Current run of scheduled days met, worked out by the server. */
+  rhythms: Record<string, number>;
+}
+
+export interface ConsistencyMoment {
+  habitId: string;
+  habitName: string;
+  days: number;
+  xpAwarded: number;
 }
 
 export interface TodayData {
@@ -145,4 +184,33 @@ export interface HabitsData {
 export interface SquadData {
   hasSquad: boolean;
   members: SquadMember[];
+}
+
+export interface FocusLobbyMember {
+  id: string;
+  name: string;
+  status: "ready" | "waiting";
+  note: string;
+}
+
+export interface FocusLobby {
+  squadName: string;
+  lengthMinutes: number;
+  startsInSeconds: number;
+  members: FocusLobbyMember[];
+}
+
+export interface SaveFocusInput {
+  taskId: string | null;
+  focusedSeconds: number;
+  plannedMinutes: number;
+  mode: "solo" | "squad";
+  stopReason?: string | null;
+}
+
+export interface SaveFocusResult {
+  focusedSeconds: number;
+  xpAwarded: number;
+  weekFocusedMinutes: number;
+  companion: CompanionState;
 }

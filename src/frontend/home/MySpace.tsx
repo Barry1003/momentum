@@ -127,14 +127,14 @@ export function HabitsCard({ habits, onIncrement }: { habits: Habit[]; onIncreme
           </p>
         </div>
         <Link
-          href="/planner?view=habits"
+          href="/habits"
           className="inline-flex items-center gap-1 rounded-full bg-accent-tint px-3.5 py-2 font-heading text-label font-bold text-accent-strong"
         >
           Tracker
           <ChevronRightIcon className="h-4 w-4" />
         </Link>
       </div>
-      <ul className="mt-4 grid grid-cols-3 gap-3">
+      <ul className="mt-4 grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(4, Math.max(1, habits.length))}, minmax(0, 1fr))` }}>
         {habits.map((habit) => {
           const Icon = HABIT_ICONS[habit.icon ?? "sparkle"];
           const complete = habit.completedCount >= habit.targetCount;

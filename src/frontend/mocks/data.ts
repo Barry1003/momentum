@@ -1,4 +1,4 @@
-import type { CompanionState, Habit, NotificationItem, PlannerData, SquadMember, Task } from "./types";
+import type { CompanionState, FocusLobby, Habit, NotificationItem, PlannerData, SquadMember, Task } from "./types";
 
 export const mockCompanion: CompanionState = {
   stage: "teen",
@@ -13,9 +13,10 @@ export const mockTasks: Task[] = [
 ];
 
 export const mockHabits: Habit[] = [
-  { id: "habit-1", name: "Drink water", targetCount: 8, completedCount: 2, isScheduledToday: true, icon: "water", unit: "glasses" },
-  { id: "habit-2", name: "Move daily", targetCount: 1, completedCount: 0, isScheduledToday: true, icon: "move" },
-  { id: "habit-3", name: "Read", targetCount: 1, completedCount: 1, isScheduledToday: true, icon: "read" },
+  { id: "habit-1", name: "Drink water", targetCount: 8, completedCount: 2, isScheduledToday: true, icon: "water", unit: "glasses", kind: "target", scheduleDays: [0, 1, 2, 3, 4, 5, 6], shareWithSquad: false },
+  { id: "habit-2", name: "Move", targetCount: 1, completedCount: 0, isScheduledToday: true, icon: "move", kind: "tick", detail: "20 min walk or stretch", scheduleDays: [0, 2, 4, 6], goalName: "Everyday wellbeing" },
+  { id: "habit-3", name: "Read", targetCount: 1, completedCount: 1, isScheduledToday: true, icon: "read", kind: "tick", detail: "10 pages", scheduleDays: [0, 1, 2, 3, 4, 5, 6], goalName: "Read consistently" },
+  { id: "habit-4", name: "Lights out by 23:00", targetCount: 1, completedCount: 0, isScheduledToday: true, icon: "sparkle", kind: "tick", detail: "Tonight", scheduleDays: [0, 1, 2, 3, 4, 5, 6] },
 ];
 
 export const mockSquadMembers: SquadMember[] = [
@@ -83,3 +84,17 @@ export const mockPlanner: PlannerData = {
   ],
   squadName: "Northstar",
 };
+
+export const mockFocusLobby: FocusLobby = {
+  squadName: "Northstar",
+  lengthMinutes: 25,
+  startsInSeconds: 45,
+  members: [
+    { id: "lobby-1", name: "Zara", status: "ready", note: "Portfolio case study" },
+    { id: "lobby-2", name: "Malik", status: "ready", note: "Math set 4" },
+    { id: "lobby-3", name: "Kemi", status: "waiting", note: "Invited" },
+  ],
+};
+
+/** Focused minutes already logged this week before today's sessions. */
+export const mockWeekFocusedMinutes = 165;
