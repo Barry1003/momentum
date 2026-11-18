@@ -114,7 +114,7 @@ export function HabitsScreen() {
           habit={habit}
           onSave={async (days, targetCount) => {
             await tracker.update(habit.id, { scheduleDays: days, targetCount });
-            showToast("Saved. Changes start tomorrow.");
+            showToast("Changes saved to your account.");
             router.push(habitsHref("all"));
           }}
           onArchive={async () => {
