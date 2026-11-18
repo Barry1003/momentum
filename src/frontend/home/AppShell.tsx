@@ -3,10 +3,11 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { BottomNav, Sidebar, Toast, type BottomNavKey } from "../components";
 import type { NewHabitInput, NewTaskInput } from "../mocks/types";
+import { AchievementOverlay } from "../me/AchievementOverlay";
 import { StageUpOverlay } from "../progress/StageUpOverlay";
 import { QuickCreateSheet, type QuickCreateKind } from "./QuickCreateSheet";
 
-const NAV_HREFS = { home: "/home", plan: "/planner", progress: "/progress", me: "/my-space" } as const;
+const NAV_HREFS = { home: "/home", plan: "/planner", progress: "/progress", me: "/me" } as const;
 
 interface ShellContextValue {
   openQuickCreate: (kind?: QuickCreateKind) => void;
@@ -76,6 +77,7 @@ export function AppShell({ active, children, onAddTask, onAddHabit }: AppShellPr
         }}
       />
       <StageUpOverlay onShare={() => setToast("Your squad will see that Ari grew up.")} />
+      <AchievementOverlay onShared={() => setToast("Shared with your squad.")} />
       {toast ? <Toast message={toast} onDismiss={dismissToast} /> : null}
     </ShellContext.Provider>
   );

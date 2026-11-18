@@ -1,8 +1,8 @@
 import { mockAchievements, mockCompanion, mockFocusLobby, mockSquadMoments, mockHabits, mockNotifications, mockPlanner, mockSquadMembers, mockTasks, mockWeekFocusedMinutes } from "./data";
 import { MOMENT_XP, addDays, currentRun, isScheduledOn, isoDate } from "./habitRules";
 import { mockGoals } from "./goalsData";
-import { STAGE_EXTRAS, nextStageState } from "./progressRules";
-import type { Achievement, CheckInInput, CheckInStatus, GoalSnapshot, ProgressSummary, SquadProgress, StageUpEvent, CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
+import { STAGE_EXTRAS, STAGE_THRESHOLDS, nextStageState } from "./progressRules";
+import type { GrowthStage, Achievement, CheckInInput, CompanionOverview, ProfileSummary, StudioOption, StudioState, CheckInStatus, GoalSnapshot, ProgressSummary, SquadProgress, StageUpEvent, CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
 
 const MOCK_LATENCY_MS = 250;
 const TASK_COMPLETE_XP = 10;
@@ -78,6 +78,7 @@ function delay<T>(value: T): Promise<T> {
 
 const JOURNEY_STARTED = "2026-10-11";
 let pendingStageUp: StageUpEvent | null = null;
+let stageReachedOn: Partial<Record<GrowthStage, string>> = {};
 
 /**
  * The only place XP changes. Stages follow XP forward and never back, and
@@ -89,6 +90,7 @@ function awardXp(amount: number): CompanionState {
   if (stage !== companion.stage) {
     const days = Math.max(1, Math.round((Date.now() - new Date(`${JOURNEY_STARTED}T00:00:00`).getTime()) / 86_400_000));
     pendingStageUp = { stage, xp, days, extra: STAGE_EXTRAS[stage] };
+    stageReachedOn = { ...stageReachedOn, [stage]: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }) };
     if (typeof window !== "undefined") window.dispatchEvent(new Event("momentum:stage-up"));
   }
   companion = { ...companion, xp, stage, xpToNextStage };
@@ -518,6 +520,14 @@ export async function saveFocusSession(sessionKey: string, input: SaveFocusInput
   const xpAwarded = focusXpFor(focusedSeconds);
   weekFocusedMinutes += Math.round(focusedSeconds / 60);
   todayFocusMinutes += Math.round(focusedSeconds / 60);
+  const day = todayIso();
+  if (focusedSeconds >= 60 && !focusDays.has(day)) {
+    focusDays.add(day);
+    stepAchievement("finding-rhythm", {
+      title: new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" }),
+      detail: `${Math.round(focusedSeconds / 60)} min`,
+    });
+  }
   const nextCompanion = awardXp(xpAwarded);
   return delay({ focusedSeconds, xpAwarded, weekFocusedMinutes, companion: nextCompanion });
 }
@@ -617,9 +627,56 @@ export async function getProgress(fromIso: string, toIso: string): Promise<Progr
   return delay({ ...current, focusDeltaMinutes: current.focusMinutes - before.focusMinutes, bestWeek: length >= 14 ? bestWeek : null });
 }
 
+let achievements: Achievement[] = structuredClone(mockAchievements);
+let pendingAchievement: Achievement | null = null;
+
 export async function getAchievements(): Promise<Achievement[]> {
-  return delay(mockAchievements);
+  return delay(achievements);
 }
+
+export async function getAchievement(id: string): Promise<Achievement | null> {
+  return delay(achievements.find((item) => item.id === id) ?? null);
+}
+
+/** Achievements are private unless the person chooses to share one. */
+export async function setAchievementShared(id: string, isShared: boolean): Promise<Achievement | null> {
+  achievements = achievements.map((item) => (item.id === id && item.earnedOn ? { ...item, isShared } : item));
+  return delay(achievements.find((item) => item.id === id) ?? null);
+}
+
+export async function getPendingAchievement(): Promise<Achievement | null> {
+  return delay(pendingAchievement);
+}
+
+export async function acknowledgeAchievement(): Promise<void> {
+  pendingAchievement = null;
+  return delay(undefined);
+}
+
+/** Progress an achievement by one step, earning it (and its XP) when complete. */
+function stepAchievement(id: string, step: { title: string; detail: string }): void {
+  const item = achievements.find((entry) => entry.id === id);
+  const progress = item?.progress;
+  if (!item || item.earnedOn || !progress) return;
+  const done = progress.done + 1;
+  const counted = [...item.counted.filter((entry) => entry.done), { ...step, done: true }];
+  if (done >= progress.total) {
+    const earnedOn = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const earned = { ...item, earnedOn, progress: null, counted };
+    achievements = achievements.map((entry) => (entry.id === id ? earned : entry));
+    awardXp(item.xp);
+    pendingAchievement = earned;
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("momentum:achievement"));
+  } else {
+    achievements = achievements.map((entry) =>
+      entry.id === id
+        ? { ...entry, progress: { ...progress, done }, counted: [...counted, { title: "Any day you like", detail: `${progress.total - done} more to go`, done: false }] }
+        : entry,
+    );
+  }
+}
+
+const focusDays = new Set<string>();
 
 export async function getGoalSnapshot(goalId: string): Promise<GoalSnapshot | null> {
   const goal = goals.find((item) => item.id === goalId);
@@ -692,4 +749,130 @@ export async function saveCheckIn(input: CheckInInput): Promise<{ xpAwarded: num
   checkIns[today] = clean;
   const next = first ? awardXp(CHECK_IN_XP) : companion;
   return delay({ xpAwarded: first ? CHECK_IN_XP : 0, companion: next });
+}
+
+// ---------------------------------------------------------------- companion, studio, profile
+
+const STAGE_ORDER: GrowthStage[] = ["child", "preteen", "teen", "youngAdult", "adult"];
+const UNLOCKED_ON: Record<GrowthStage, string> = { child: "2 Sep", preteen: "19 Sep", teen: "12 Oct", youngAdult: "", adult: "" };
+
+function stageAtLeast(stage: GrowthStage): boolean {
+  return STAGE_ORDER.indexOf(companion.stage) >= STAGE_ORDER.indexOf(stage);
+}
+
+export async function getCompanionOverview(): Promise<CompanionOverview> {
+  const xpPerDay = 30;
+  const toGo = companion.xpToNextStage ? companion.xpToNextStage - companion.xp : null;
+  const days = toGo !== null ? Math.max(1, Math.ceil(toGo / xpPerDay)) : null;
+  const latest = Object.entries(checkIns).sort(([a], [b]) => (a < b ? 1 : -1))[0]?.[1];
+  const moodWord: Record<string, string> = { heavy: "Gentle", low: "Gentle", okay: "Calm", good: "Happy", bright: "Bright" };
+  return delay({
+    stage: companion.stage,
+    xp: companion.xp,
+    xpToNextStage: companion.xpToNextStage,
+    paceNote: days === null ? null : days <= 10 ? `About ${days} days at your usual pace.` : `About ${Math.round(days / 7)} weeks at your usual pace.`,
+    mood: `${latest ? moodWord[latest.mood] : "Calm"} mood`,
+    stages: STAGE_THRESHOLDS.map(({ stage, from }) => ({
+      stage,
+      from,
+      unlockedOn: stageAtLeast(stage) ? stageReachedOn[stage] ?? (UNLOCKED_ON[stage] || "Recently") : null,
+    })),
+    achievementsEarned: achievements.filter((item) => item.earnedOn).length,
+    achievementsClose: achievements.filter((item) => !item.earnedOn && item.progress && item.progress.done / item.progress.total >= 0.6).length,
+  });
+}
+
+let look = { name: "Ari", room: "lavender", plinth: "cream", outfit: "original", accents: [] as string[] };
+
+function option(id: string, label: string, detail: string, status: StudioOption["status"], unlock?: string): StudioOption {
+  return { id, label, detail, status, unlock };
+}
+
+function buildStudio(): StudioState {
+  const longestRun = Math.max(0, ...habits.map((habit) => currentRun(rules(habit), habitHistory[habit.id] ?? {}, todayIso())));
+  const goalDone = goals.some((goal) => goal.completedOn);
+  const inSquad = squadMembers.length > 0;
+  const deepDiver = achievements.some((item) => item.id === "deep-diver" && item.earnedOn);
+  const pick = (id: string, current: string, available: boolean, unlock?: string): StudioOption["status"] =>
+    id === current ? "selected" : available ? "available" : unlock ? "locked" : "soon";
+  return {
+    name: look.name,
+    room: look.room,
+    plinth: look.plinth,
+    outfit: look.outfit,
+    rooms: [
+      option("lavender", "Lavender nook", "Soft purple · default", pick("lavender", look.room, true)),
+      option("sage", "Sage studio", "Calm green walls, a plant, and a little desk lamp", pick("sage", look.room, true)),
+      option("sunrise", "Sunrise loft", stageAtLeast("youngAdult") ? "Warm light · earned" : "Unlocks at Young Adult", pick("sunrise", look.room, stageAtLeast("youngAdult"), "Unlocks at Young Adult")),
+      option("midnight", "Midnight room", "Coming later", "soon"),
+    ],
+    accents: [
+      option("plant", "Little plant", "Sits on the desk", look.accents.includes("plant") ? "selected" : "available"),
+      option("lamp", "Desk lamp", "A warm pool of light", look.accents.includes("lamp") ? "selected" : "available"),
+      option("lights", "String lights", "Coming later", "soon"),
+    ],
+    outfits: [
+      option("original", "Ari’s original", "Blue jacket · white hoodie · headphones", look.outfit === "original" ? "selected" : "available"),
+      option("coat", "Rainy day coat", deepDiver ? "Earned with “Deep diver” · art arrives soon" : "Unlocks with “Deep diver”", deepDiver ? "earned" : "locked", "Unlocks with “Deep diver”"),
+      option("festival", "Festival look", "Coming later", "soon"),
+    ],
+    extras: [
+      option("headphones", "Headphones", "Unlocked", "earned"),
+      option("backpack", "Backpack", "7-day rhythm", longestRun >= 7 ? "earned" : "locked", "7-day rhythm"),
+      option("aura", "Gold aura", "First goal done", goalDone || stageAtLeast("youngAdult") ? "earned" : "locked", "First goal done"),
+      option("scarf", "Squad scarf", "Join a squad", inSquad ? "earned" : "locked", "Join a squad"),
+    ],
+    styles: [
+      option("anime-boy", "Anime · Boy", "Ari", "selected"),
+      option("anime-girl", "Anime · Girl", "Art for every stage is coming", "soon"),
+      option("anime-bold", "Anime · Bold", "Art for every stage is coming", "soon"),
+      option("soft-boy", "Soft 3D · Boy", "Art for every stage is coming", "soon"),
+      option("soft-girl", "Soft 3D · Girl", "Art for every stage is coming", "soon"),
+    ],
+    plinths: [
+      { id: "cream", label: "Cream", color: "#f8f0e2" },
+      { id: "lavender", label: "Lavender", color: "#ddd2f8" },
+      { id: "mint", label: "Mint", color: "#d6f0e6" },
+      { id: "peach", label: "Peach", color: "#fbdcc8" },
+      { id: "midnight", label: "Midnight", color: "#2f1d66" },
+    ],
+  };
+}
+
+export async function getStudio(): Promise<StudioState> {
+  return delay(buildStudio());
+}
+
+/**
+ * Save a look. Only rooms, accents and outfits the person has can be applied;
+ * a look never changes the growth stage or XP.
+ */
+export async function saveLook(changes: { name?: string; room?: string; plinth?: string; outfit?: string; accents?: string[] }): Promise<StudioState> {
+  const studio = buildStudio();
+  const usable = (list: StudioOption[], id: string | undefined) =>
+    id !== undefined && list.some((item) => item.id === id && (item.status === "selected" || item.status === "available"));
+  const name = changes.name?.trim();
+  if (name !== undefined && (name.length < 1 || name.length > 20)) throw new Error("Names are 1 to 20 characters.");
+  look = {
+    name: name ?? look.name,
+    room: usable(studio.rooms, changes.room) ? (changes.room as string) : look.room,
+    plinth: studio.plinths.some((item) => item.id === changes.plinth) ? (changes.plinth as string) : look.plinth,
+    outfit: usable(studio.outfits, changes.outfit) ? (changes.outfit as string) : look.outfit,
+    accents: changes.accents ? changes.accents.filter((id) => usable(studio.accents, id) || look.accents.includes(id)) : look.accents,
+  };
+  return delay(buildStudio());
+}
+
+export async function getProfileSummary(displayName: string): Promise<ProfileSummary> {
+  const name = displayName.trim() || "Friend";
+  const today = todayIso();
+  const monday = addDays(today, -((new Date(`${today}T12:00:00`).getDay() + 6) % 7));
+  const summary = summarise(monday, today);
+  return delay({
+    displayName: name,
+    handle: `@${name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 15) || "you"}`,
+    squadName: squadMembers.length ? planner.squadName : null,
+    squadMembers: squadMembers.length + 1,
+    activeDays: summary.activeDays,
+  });
 }

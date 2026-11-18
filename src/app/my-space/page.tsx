@@ -1,3 +1,6 @@
-import { WorkspacePreview } from "@/frontend/workspace/WorkspacePreview";
+import { redirect } from "next/navigation";
 
-export default function MySpacePage() { return <WorkspacePreview />; }
+/** The old "My Space" preview now lives under Me. */
+export default function MySpacePage() {
+  redirect("/me");
+}

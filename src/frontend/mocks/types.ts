@@ -292,6 +292,58 @@ export interface Achievement {
   title: string;
   tone: "gold" | "violet" | "mint";
   earnedOn: string | null;
+  /** What it asks for, e.g. "5 focus sessions of 25+ min". */
+  criteria: string;
+  icon: "check" | "play" | "water" | "person" | "read" | "sparkle";
+  xp: number;
+  isShared: boolean;
+  progress: { done: number; total: number } | null;
+  /** Earned: what counted. In progress: the steps so far. */
+  counted: { title: string; detail: string; done: boolean }[];
+  headline: string;
+  body: string;
+}
+
+export interface StudioOption {
+  id: string;
+  label: string;
+  detail: string;
+  status: "selected" | "available" | "earned" | "locked" | "soon";
+  /** Why it is locked, e.g. "Unlocks at Young Adult". */
+  unlock?: string;
+}
+
+export interface StudioState {
+  name: string;
+  room: string;
+  plinth: string;
+  outfit: string;
+  rooms: StudioOption[];
+  accents: StudioOption[];
+  outfits: StudioOption[];
+  extras: StudioOption[];
+  styles: StudioOption[];
+  plinths: { id: string; label: string; color: string }[];
+}
+
+export interface CompanionOverview {
+  stage: GrowthStage;
+  xp: number;
+  xpToNextStage: number | null;
+  /** Server estimate, e.g. "About 2 weeks at your usual pace". */
+  paceNote: string | null;
+  mood: string;
+  stages: { stage: GrowthStage; from: number; unlockedOn: string | null }[];
+  achievementsEarned: number;
+  achievementsClose: number;
+}
+
+export interface ProfileSummary {
+  displayName: string;
+  handle: string;
+  squadName: string | null;
+  squadMembers: number;
+  activeDays: number;
 }
 
 export interface GoalSnapshot {

@@ -560,12 +560,12 @@ export function ProgressScreen() {
                 </h2>
                 <p className="font-heading text-label text-text-muted">Earned for good. Never taken away.</p>
               </div>
-              <button type="button" onClick={() => showToast("All achievements arrive with the Me screens.")} className="rounded-full bg-accent-tint px-4 py-2 font-heading text-label font-bold text-accent-strong">
+              <Link href="/me?view=achievements" className="rounded-full bg-accent-tint px-4 py-2 font-heading text-label font-bold text-accent-strong">
                 All
-              </button>
+              </Link>
             </div>
             <ul className="flex justify-around rounded-[26px] bg-surface p-5 shadow-raised">
-              {(achievements ?? []).map((item) => (
+              {(achievements ?? []).slice(0, 3).map((item) => (
                 <li key={item.id} className="flex flex-col items-center gap-2 text-center">
                   <span className={cn("grid h-16 w-16 place-items-center rounded-full text-white shadow-raised", ACHIEVEMENT_TONES[item.tone], item.earnedOn ? "" : "opacity-60")}>
                     <SparkleIcon className="h-6 w-6" />

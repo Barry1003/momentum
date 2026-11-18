@@ -156,3 +156,21 @@ describe("progress and check-ins", () => {
     }
   });
 });
+
+describe("achievements and studio", () => {
+  it("keeps achievements private until shared", async () => {
+    const { getAchievement, setAchievementShared } = await import("./repository");
+    expect((await getAchievement("deep-diver"))?.isShared).toBe(false);
+    expect((await setAchievementShared("deep-diver", true))?.isShared).toBe(true);
+    expect((await setAchievementShared("bookworm", true))?.isShared).toBe(false);
+  });
+
+  it("only applies looks the person has", async () => {
+    const { saveLook } = await import("./repository");
+    const studio = await saveLook({ room: "midnight", plinth: "mint", name: "Ari" });
+    expect(studio.room).not.toBe("midnight");
+    expect(studio.plinth).toBe("mint");
+    const sage = await saveLook({ room: "sage" });
+    expect(sage.room).toBe("sage");
+  });
+});
