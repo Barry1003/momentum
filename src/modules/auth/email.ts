@@ -28,3 +28,26 @@ export async function sendAuthenticationEmail(message: Message): Promise<void> {
     throw new Error(`Email delivery failed (HTTP ${response.status})`);
   }
 }
+
+export async function sendCodeEmail(message: {
+  to: string;
+  code: string;
+  type: "email-verification" | "sign-in" | "forget-password";
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.AUTH_EMAIL_FROM;
+  if (!apiKey || !from) throw new Error("Email provider is not configured");
+  const subject = message.type === "email-verification"
+    ? "Verify your Momentum account"
+    : message.type === "sign-in" ? "Your Momentum sign-in code" : "Your Momentum recovery code";
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from, to: [message.to], subject,
+      text: `Your Momentum verification code is ${message.code}. It expires in 10 minutes. If you did not request this, ignore the email.`,
+    }),
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error(`Email delivery failed (HTTP ${response.status})`);
+}
