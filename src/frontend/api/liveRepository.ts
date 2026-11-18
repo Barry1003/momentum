@@ -70,15 +70,16 @@ function historyOf(raw: Workspace): HabitTracker["history"] {
 function habitOf(raw: RawHabit, history: HabitTracker["history"], day = localToday()): Habit {
  const scheduleDays = raw.scheduleDays?.length ? raw.scheduleDays : [0,1,2,3,4,5,6];
  const startsOn = dateOnly(raw.startsOn) ?? undefined;
- const pausedFrom = raw.status === "PAUSED" ? dateOnly(raw.pausedAt) : null;
  const pausedUntil = dateOnly(raw.pausedUntil);
+ const pausedNow = raw.status === "PAUSED" && (!pausedUntil || pausedUntil >= day);
+ const pausedFrom = pausedNow ? dateOnly(raw.pausedAt) : null;
  return {
   id: raw.id, name: raw.name, detail: raw.description ?? undefined,
   icon: (["water","move","read","sparkle"].includes(raw.icon ?? "") ? raw.icon : "sparkle") as Habit["icon"],
   targetCount: raw.targetValue, completedCount: history[raw.id]?.[day] ?? 0,
   kind: raw.targetType === "COUNT" ? "target" : raw.targetType === "DURATION" ? "timer" : "tick",
   unit: raw.unit ?? undefined, scheduleDays, startsOn, pausedFrom, pausedUntil,
-  isScheduledToday: raw.status === "ACTIVE" && isScheduledOn({scheduleDays,targetCount:raw.targetValue,startsOn,pausedFrom,pausedUntil},day),
+  isScheduledToday: !pausedNow && raw.status !== "ARCHIVED" && isScheduledOn({scheduleDays,targetCount:raw.targetValue,startsOn,pausedFrom,pausedUntil},day),
   reminderTime: raw.reminderTime, shareWithSquad: Boolean(raw.sharedWithSquadId),
   archived: raw.status === "ARCHIVED",
  };
