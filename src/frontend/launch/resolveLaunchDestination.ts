@@ -14,6 +14,10 @@ export type LaunchDestination =
   | "/onboarding"
   | "/onboarding/sign-in"
   | "/onboarding/name"
+  | "/onboarding/companion"
+  | "/onboarding/privacy"
+  | "/onboarding/join"
+  | "/onboarding/ready"
   | "/home"
   | "/home?tab=squad";
 
