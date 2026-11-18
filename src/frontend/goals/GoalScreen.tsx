@@ -435,7 +435,7 @@ export function GoalScreen({ goalId }: { goalId: string }) {
           right={
             <>
               <PrimaryLink href={goalHref(goal.id, "add")}>Add the first task</PrimaryLink>
-              <SecondaryButton onClick={() => showToast("Growth Studio planning arrives with section 06.")}>Plan it in Growth Studio</SecondaryButton>
+              <SecondaryButton href={`/growth?view=central&goal=${goal.id}`}>Plan it in Growth Studio</SecondaryButton>
             </>
           }
         />

@@ -118,7 +118,7 @@ export function PlannerScreen({ today }: { today: UseTodayResult }) {
         onCancel={() => router.push("/planner")}
       />;
   } else if ((tasks && tasks.length === 0 && !planner.data?.carryOver) || params.get("preview") === "empty") {
-    body = <EmptyDay art={STAGE_ART[companion?.stage ?? "teen"].full} onGrowthStudio={() => showToast("Growth Studio arrives with section 06.")} />;
+    body = <EmptyDay art={STAGE_ART[companion?.stage ?? "teen"].full} onGrowthStudio={() => router.push("/growth")} />;
   } else {
     body = (
       <>
@@ -157,7 +157,7 @@ export function PlannerScreen({ today }: { today: UseTodayResult }) {
               router.push("/planner?view=tasks");
             })
           }
-          onSuggestions={() => showToast("Suggested actions arrive with Growth Studio.")}
+          onSuggestions={() => router.push("/growth?view=rhythms")}
         />
       </>
     );

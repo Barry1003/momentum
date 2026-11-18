@@ -285,9 +285,9 @@ export function ProgressScreen() {
                 <Link href={`/goals/${snapshot.id}`} className="w-full rounded-full bg-[image:var(--gradient-primary)] py-4 text-center font-heading text-body font-bold text-white shadow-pressable">
                   Open Goal Details
                 </Link>
-                <button type="button" onClick={() => showToast("The Harada grid arrives with Growth Studio.")} className="w-full rounded-full bg-surface py-4 font-heading text-body font-bold text-accent-strong shadow-raised">
+                <Link href="/growth?view=grid" className="w-full rounded-full bg-surface py-4 text-center font-heading text-body font-bold text-accent-strong shadow-raised">
                   Open grid in Growth Studio
-                </button>
+                </Link>
               </>
             }
           />

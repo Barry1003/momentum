@@ -193,3 +193,30 @@ describe("settings and account", () => {
     expect((await requestAccountDeletion("482913", "DELETE")).deletionScheduledFor).not.toBeNull();
   });
 });
+
+describe("growth studio", () => {
+  it("keeps ratings 1–5 and moves on to the next area", async () => {
+    const { rateArea } = await import("./repository");
+    await expect(rateArea("health", 7, "")).rejects.toThrow();
+    const state = await rateArea("health", 3, "  ok  ");
+    expect(state.areas.find((area) => area.id === "health")?.note).toBe("ok");
+    expect(state.lastPausedAreaId).toBe("money");
+  });
+
+  it("accepts a draft into the plan once, never twice", async () => {
+    const { acceptGridAction, getHabits } = await import("./repository");
+    const before = (await getHabits()).habits.length;
+    await acceptGridAction("ga-3", "habit", { days: [0, 1, 2, 3, 4, 5, 6], targetMinutes: 20, reminderTime: null });
+    const again = await acceptGridAction("ga-3", "habit", { days: [0, 1, 2, 3, 4, 5, 6], targetMinutes: 20, reminderTime: null });
+    expect((await getHabits()).habits.length).toBe(before + 1);
+    expect(again.grid?.actions.find((action) => action.id === "ga-3")?.status).toBe("accepted");
+  });
+
+  it("limits an area to 8 actions", async () => {
+    const { saveGridAction } = await import("./repository");
+    for (let i = 0; i < 8; i += 1) {
+      await saveGridAction({ id: null, areaId: "a-8", title: `Step ${i}`, minutes: 10, addAs: "task", rhythm: "weekly" }).catch(() => undefined);
+    }
+    await expect(saveGridAction({ id: null, areaId: "a-8", title: "One more", minutes: 10, addAs: "task", rhythm: "weekly" })).rejects.toThrow();
+  });
+});

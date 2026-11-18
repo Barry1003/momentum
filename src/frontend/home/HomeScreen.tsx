@@ -194,7 +194,7 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
       <FirstDayActions
         onAddTask={() => openQuickCreate("task")}
         onAddHabit={() => openQuickCreate("habit")}
-        onDirection={() => router.push("/planner?view=growth-studio")}
+        onDirection={() => router.push("/growth")}
       />
     );
   } else if (mode === "quiet") {

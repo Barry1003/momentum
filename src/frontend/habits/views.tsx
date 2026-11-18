@@ -150,7 +150,7 @@ function TodayRow({ habit, todayIso, pending, onLog, onResume }: { habit: Habit;
   const done = count >= habit.targetCount;
   const paused = isPausedNow(habit, todayIso) && !habit.isScheduledToday;
   const notYet = habit.startsOn && habit.startsOn > todayIso;
-  const isCounted = habit.kind === "target" || habit.targetCount > 1;
+  const isCounted = habit.kind === "target";
   const display = { ...habit, completedCount: count };
 
   let action: ReactNode;
@@ -694,6 +694,7 @@ type WhenChoice = "every" | "weekdays" | "pick";
 
 export interface NewHabitValues {
   name: string;
+  detail?: string;
   kind: HabitKind;
   targetCount: number;
   unit: string;
@@ -740,8 +741,8 @@ export function NewHabit({
       if (!Number.isInteger(targetCount) || targetCount < 2 || targetCount > 99) return setError("Targets are whole numbers from 2 to 99.");
     }
     if (kind === "timer") {
-      targetCount = Number(minutes);
-      if (!Number.isInteger(targetCount) || targetCount < 1 || targetCount > 240) return setError("Timers are 1 to 240 minutes.");
+      const value = Number(minutes);
+      if (!Number.isInteger(value) || value < 1 || value > 240) return setError("Timers are 1 to 240 minutes.");
     }
     if (reminderOn && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminder)) return setError("Reminder time looks off. Use HH:MM.");
     const goal = goalOptions[goalIndex];
@@ -751,7 +752,8 @@ export function NewHabit({
         name: trimmed.slice(0, 60),
         kind,
         targetCount,
-        unit: kind === "target" ? unit.trim().slice(0, 20) || "times" : kind === "timer" ? "min" : "",
+        unit: kind === "target" ? unit.trim().slice(0, 20) || "times" : "",
+        detail: kind === "timer" ? `${Number(minutes)} min` : undefined,
         scheduleDays,
         reminderTime: reminderOn ? reminder : null,
         goalName: goal === "No goal" ? null : goal,
@@ -886,7 +888,7 @@ export function EditHabit({
   const [editingTarget, setEditingTarget] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const unit = habit.kind === "timer" ? "minutes" : habit.unit ?? (habit.targetCount > 1 ? "times" : "time");
+  const unit = habit.kind === "target" ? habit.unit ?? "times" : "time a day";
 
   async function save() {
     const value = Number(target);

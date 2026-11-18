@@ -2,7 +2,7 @@ import { mockAchievements, mockCompanion, mockFocusLobby, mockSquadMoments, mock
 import { MOMENT_XP, addDays, currentRun, isScheduledOn, isoDate } from "./habitRules";
 import { mockGoals } from "./goalsData";
 import { STAGE_EXTRAS, STAGE_THRESHOLDS, nextStageState } from "./progressRules";
-import type { AccountPreview, PrivacySettings, ProfileDetails, QuietHours, ReminderSettings, GrowthStage, Achievement, CheckInInput, CompanionOverview, ProfileSummary, StudioOption, StudioState, CheckInStatus, GoalSnapshot, ProgressSummary, SquadProgress, StageUpEvent, CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
+import type { AcceptHabitOptions, AuditArea, GridAction, GrowthStudioState, AccountPreview, PrivacySettings, ProfileDetails, QuietHours, ReminderSettings, GrowthStage, Achievement, CheckInInput, CompanionOverview, ProfileSummary, StudioOption, StudioState, CheckInStatus, GoalSnapshot, ProgressSummary, SquadProgress, StageUpEvent, CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
 
 const MOCK_LATENCY_MS = 250;
 const TASK_COMPLETE_XP = 10;
@@ -276,7 +276,11 @@ function toPlannerGoal(goal: GoalDetail): PlannerGoal {
 }
 
 export async function getPlanner(): Promise<PlannerData> {
-  planner = { ...planner, goals: goals.map(toPlannerGoal) };
+  planner = {
+    ...planner,
+    goals: goals.map(toPlannerGoal),
+    suggestedActionCount: studio.grid ? studio.grid.actions.filter((action) => action.status !== "accepted").length : 0,
+  };
   return delay(planner);
 }
 
@@ -466,14 +470,15 @@ export async function addHabit(input: NewHabitInput): Promise<{ habit: Habit }> 
   const habit: Habit = {
     id: `habit-${nextId++}`,
     kind,
-    unit: input.unit?.trim() || (kind === "timer" ? "min" : undefined),
+    unit: kind === "target" ? input.unit?.trim() || "times" : undefined,
+    detail: input.detail?.trim().slice(0, 60) || undefined,
     scheduleDays: scheduleDays.length ? [...new Set(scheduleDays)].sort((a, b) => a - b) : EVERY_DAY,
     startsOn: input.startsTomorrow ? addDays(todayIso(), 1) : undefined,
     reminderTime: input.reminderTime ?? null,
     goalName: input.goalName ?? null,
     shareWithSquad: input.shareWithSquad === true,
     name: input.name.trim(),
-    targetCount: Math.max(1, input.targetCount),
+    targetCount: kind === "target" ? Math.max(1, input.targetCount) : 1,
     completedCount: 0,
     isScheduledToday: true,
     icon: "sparkle",
@@ -1013,4 +1018,230 @@ export async function requestAccountDeletion(code: string, confirmWord: string):
 export async function cancelAccountDeletion(): Promise<AccountPreview> {
   account = { ...account, deletionScheduledFor: null };
   return delay(account);
+}
+
+// ---------------------------------------------------------------- growth studio
+
+const AUDIT_AREAS: AuditArea[] = [
+  { id: "rest", name: "Rest & recovery", icon: "rest", rating: 2, note: "Evenings fill up before I pause." },
+  { id: "learning", name: "Learning", icon: "learning", rating: 4, note: "" },
+  { id: "work", name: "Work & purpose", icon: "work", rating: 3, note: "" },
+  { id: "people", name: "Friends & family", icon: "people", rating: 3, note: "" },
+  { id: "health", name: "Health & body", icon: "health", rating: null, note: "" },
+  { id: "money", name: "Money", icon: "money", rating: null, note: "" },
+  { id: "home", name: "Home & space", icon: "home", rating: null, note: "" },
+];
+
+const AUDIT_QUESTIONS = [
+  ["Money", "How do you feel about money right now?", "Spending, saving, the worry or the calm.", "I spend before I plan."],
+  ["Energy", "When do you have the most energy?", "Times of day, people, places.", "Mornings, if I sleep."],
+  ["Daily habits", "What do your days actually look like right now?", "Mornings, evenings, the small things you repeat without thinking.", ""],
+  ["Avoiding", "What have you been putting off?", "No judgement. Just name it.", ""],
+  ["One year from now", "What would you love to be true a year from now?", "Big or small.", ""],
+  ["What got in the way", "What got in the way last time you tried?", "Time, energy, other people, yourself.", ""],
+  ["Practice", "What do you practise without being asked?", "The things you return to.", ""],
+  ["Feedback", "Who do you show your work to?", "Or who would you like to?", ""],
+  ["Health", "How is your body feeling these days?", "Sleep, movement, food.", ""],
+  ["Mindset", "What do you tell yourself when things get hard?", "The voice in your head.", ""],
+  ["Time", "Where does your time go that you wish it didn’t?", "Be honest, not harsh.", ""],
+  ["Projects", "What would you build if nobody was watching?", "Anything at all.", ""],
+] as const;
+
+const SUGGESTED_AREA_NAMES = ["Skills", "Practice", "Projects", "Time", "Feedback", "Health", "Money", "Mindset"];
+const RHYTHM_FOR_MINUTES = (minutes: number): GridAction["rhythm"] => (minutes <= 30 ? "daily" : minutes <= 120 ? "weekly" : "monthly");
+
+const studio: GrowthStudioState & { nextAction: number } = {
+  areas: structuredClone(AUDIT_AREAS),
+  questions: AUDIT_QUESTIONS.map(([topic, prompt, hint, answer], index) => ({ id: `q-${index + 1}`, topic, prompt, hint, answer })),
+  lastPausedAreaId: "rest",
+  grid: {
+    goalId: "g-1",
+    goalTitle: "Become a confident developer",
+    why: "Build skills and confidence to ship projects on my own.",
+    areas: [
+      { id: "a-1", name: "Skills", isDraft: false },
+      { id: "a-2", name: "Practice", isDraft: false },
+      { id: "a-3", name: "Projects", isDraft: false },
+      { id: "a-4", name: "Wellbeing", isDraft: false },
+      { id: "a-5", name: "Feedback", isDraft: true },
+      { id: "a-6", name: "Time", isDraft: true },
+      { id: "a-7", name: "Money", isDraft: true },
+      { id: "a-8", name: "Mindset", isDraft: true },
+    ],
+    actions: [
+      { id: "ga-1", areaId: "a-1", title: "Review JS closures", minutes: 25, addAs: "task", rhythm: "weekly", status: "draft", rhythmChangedByYou: false },
+      { id: "ga-2", areaId: "a-1", title: "Read 10 pages", minutes: 20, addAs: "habit", rhythm: "daily", status: "draft", rhythmChangedByYou: false },
+      { id: "ga-3", areaId: "a-2", title: "Code for 20 minutes", minutes: 20, addAs: "habit", rhythm: "daily", status: "draft", rhythmChangedByYou: false },
+      { id: "ga-4", areaId: "a-3", title: "Build one small feature", minutes: 120, addAs: "task", rhythm: "weekly", status: "draft", rhythmChangedByYou: false },
+      { id: "ga-5", areaId: "a-4", title: "Walk for 20 minutes", minutes: 20, addAs: "task", rhythm: "daily", status: "draft", rhythmChangedByYou: false },
+      { id: "ga-6", areaId: "a-4", title: "Water before coffee", minutes: 2, addAs: "habit", rhythm: "daily", status: "suggestion", rhythmChangedByYou: false },
+    ],
+  },
+  suggestedAreas: [],
+  reviewOpensInDays: 9,
+  nextAction: 100,
+};
+
+function suggestFromAnswers(): GrowthStudioState["suggestedAreas"] {
+  const quoteFor = (topic: string) => studio.questions.find((question) => question.topic.toLowerCase().includes(topic.toLowerCase()) && question.answer.trim())?.answer.trim() ?? null;
+  const daily = studio.questions.find((question) => question.topic === "Daily habits")?.answer ?? "";
+  return SUGGESTED_AREA_NAMES.map((name) => {
+    let quote = quoteFor(name);
+    if (!quote && name === "Time" && /evening|scroll|disappear/i.test(daily)) quote = "Evenings disappear.";
+    if (!quote && name === "Practice" && /only study|when something is due/i.test(daily)) quote = "I only study when something is due.";
+    return { name, quote: quote ? (quote.length > 60 ? `${quote.slice(0, 57)}…` : quote) : null };
+  });
+}
+
+function studioView(): GrowthStudioState {
+  return structuredClone({ ...studio, suggestedAreas: suggestFromAnswers(), nextAction: undefined }) as GrowthStudioState;
+}
+
+export async function getGrowthStudio(): Promise<GrowthStudioState> {
+  return delay(studioView());
+}
+
+/** Ratings are 1–5 or skipped; notes stay private. There is never an overall score. */
+export async function rateArea(areaId: string, rating: number | null, note: string): Promise<GrowthStudioState> {
+  if (rating !== null && (!Number.isInteger(rating) || rating < 1 || rating > 5)) throw new Error("Pick 1 to 5.");
+  studio.areas = studio.areas.map((area) => (area.id === areaId ? { ...area, rating, note: note.trim().slice(0, 280) } : area));
+  const next = studio.areas.find((area) => area.rating === null && area.id !== areaId);
+  studio.lastPausedAreaId = next?.id ?? null;
+  return delay(studioView());
+}
+
+export async function saveAuditAreas(areas: { id: string | null; name: string }[]): Promise<GrowthStudioState> {
+  const cleaned = areas.map((area) => ({ ...area, name: area.name.trim().slice(0, 40) })).filter((area) => area.name.length >= 2).slice(0, 12);
+  if (cleaned.length === 0) throw new Error("Keep at least one area.");
+  studio.areas = cleaned.map((area) => {
+    const existing = area.id ? studio.areas.find((item) => item.id === area.id) : undefined;
+    return existing ? { ...existing, name: area.name } : { id: `area-${studio.nextAction++}`, name: area.name, icon: "spark", rating: null, note: "" };
+  });
+  return delay(studioView());
+}
+
+export async function answerQuestion(questionId: string, answer: string): Promise<GrowthStudioState> {
+  studio.questions = studio.questions.map((question) => (question.id === questionId ? { ...question, answer: answer.trim().slice(0, 2000) } : question));
+  return delay(studioView());
+}
+
+/** Point the grid at a goal. A new goal is created through the same goals store, never copied. */
+export async function setCentralGoal(input: { goalId: string | null; newTitle?: string; why: string }): Promise<GrowthStudioState> {
+  const found = input.goalId ? goals.find((item) => item.id === input.goalId) : undefined;
+  let goal: GoalDetail;
+  if (found) goal = found;
+  else {
+    if (!input.newTitle) throw new Error("Pick a goal or name a new one.");
+    goal = await createGoal({ title: input.newTitle, why: input.why });
+  }
+  const why = input.why.trim().slice(0, 280);
+  goals = goals.map((item) => (item.id === goal.id ? { ...item, why: why || item.why } : item));
+  if (studio.grid && studio.grid.goalId === goal.id) {
+    studio.grid = { ...studio.grid, why };
+  } else {
+    studio.grid = { goalId: goal.id, goalTitle: goal.title, why, areas: [], actions: [] };
+  }
+  return delay(studioView());
+}
+
+export async function applySuggestedGrid(blank: boolean): Promise<GrowthStudioState> {
+  if (!studio.grid) throw new Error("Choose a central goal first.");
+  const names = blank ? SUGGESTED_AREA_NAMES.map((_, index) => `Area ${index + 1}`) : SUGGESTED_AREA_NAMES;
+  studio.grid = {
+    ...studio.grid,
+    areas: names.map((name, index) => ({ id: `a-${studio.nextAction++}-${index}`, name, isDraft: true })),
+    actions: studio.grid.actions.filter((action) => action.status === "accepted"),
+  };
+  return delay(studioView());
+}
+
+export async function renameGridArea(areaId: string, name: string): Promise<GrowthStudioState> {
+  const clean = name.trim().slice(0, 30);
+  if (clean.length < 2) throw new Error("Area names need at least 2 characters.");
+  if (!studio.grid) throw new Error("No grid yet.");
+  studio.grid = { ...studio.grid, areas: studio.grid.areas.map((area) => (area.id === areaId ? { ...area, name: clean, isDraft: false } : area)) };
+  return delay(studioView());
+}
+
+export async function saveGridAction(input: Omit<GridAction, "id" | "status" | "rhythmChangedByYou"> & { id: string | null }): Promise<{ state: GrowthStudioState; actionId: string }> {
+  const grid = studio.grid;
+  if (!grid) throw new Error("No grid yet.");
+  const title = input.title.trim().slice(0, 80);
+  if (title.length < 2) throw new Error("Give the action a short name.");
+  if (!Number.isInteger(input.minutes) || input.minutes < 1 || input.minutes > 600) throw new Error("Duration is 1 to 600 minutes.");
+  const existing = input.id ? grid.actions.find((action) => action.id === input.id) : undefined;
+  if (existing?.status === "accepted") throw new Error("This one is already in your plan. Change it there.");
+  if (!existing && grid.actions.filter((action) => action.areaId === input.areaId).length >= 8) throw new Error("An area holds up to 8 actions.");
+  const id = existing?.id ?? `ga-${studio.nextAction++}`;
+  const action: GridAction = {
+    id,
+    areaId: input.areaId,
+    title,
+    minutes: input.minutes,
+    addAs: input.addAs,
+    rhythm: input.rhythm,
+    status: "draft",
+    rhythmChangedByYou: existing ? existing.rhythm !== input.rhythm || existing.rhythmChangedByYou : false,
+  };
+  studio.grid = {
+    ...grid,
+    areas: grid.areas.map((area) => (area.id === input.areaId ? { ...area, isDraft: false } : area)),
+    actions: existing ? grid.actions.map((item) => (item.id === id ? action : item)) : [...grid.actions, action],
+  };
+  return delay({ state: studioView(), actionId: id });
+}
+
+export async function setActionRhythm(actionId: string, rhythm: GridAction["rhythm"]): Promise<GrowthStudioState> {
+  if (!studio.grid) throw new Error("No grid yet.");
+  studio.grid = {
+    ...studio.grid,
+    actions: studio.grid.actions.map((action) =>
+      action.id === actionId && action.status !== "accepted"
+        ? { ...action, rhythm, addAs: rhythm === "daily" && action.minutes <= 30 ? "habit" : "task", rhythmChangedByYou: rhythm !== RHYTHM_FOR_MINUTES(action.minutes) }
+        : action,
+    ),
+  };
+  return delay(studioView());
+}
+
+/**
+ * Accept a draft into the real plan, once: a task goes to Planner (linked to the
+ * goal), a habit to Habit Tracker. Accepting twice never duplicates it.
+ */
+export async function acceptGridAction(actionId: string, as: "task" | "habit", habit?: AcceptHabitOptions): Promise<GrowthStudioState> {
+  const grid = studio.grid;
+  const action = grid?.actions.find((item) => item.id === actionId);
+  if (!grid || !action) throw new Error("That action isn’t in your grid any more.");
+  if (action.status === "accepted") return delay(studioView());
+  const goal = goals.find((item) => item.id === grid.goalId);
+  if (as === "habit") {
+    const days = habit?.days.filter((day) => day >= 0 && day <= 6) ?? [0, 1, 2, 3, 4, 5, 6];
+    if (days.length === 0) throw new Error("Pick at least one day.");
+    if (habit?.reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(habit.reminderTime)) throw new Error("Reminder time looks off.");
+    await addHabit({
+      name: action.title,
+      targetCount: 1,
+      kind: "timer",
+      detail: `${habit?.targetMinutes ?? action.minutes} min`,
+      scheduleDays: days,
+      reminderTime: habit?.reminderTime ?? null,
+      goalName: goal?.title ?? null,
+      startsTomorrow: false,
+    });
+  } else {
+    const area = grid.areas.find((item) => item.id === action.areaId);
+    await addGoalTask(grid.goalId, { title: action.title, when: action.rhythm === "daily" || action.rhythm === "once" ? "today" : "tomorrow", priority: "medium" }).catch(() =>
+      addTask({ title: action.title, when: "today", durationMinutes: action.minutes, category: area?.name, goalName: goal?.title }),
+    );
+  }
+  studio.grid = { ...grid, actions: grid.actions.map((item) => (item.id === actionId ? { ...item, status: "accepted", addAs: as } : item)) };
+  return delay(studioView());
+}
+
+export async function acceptAllRhythms(): Promise<GrowthStudioState> {
+  const pending = studio.grid?.actions.filter((action) => action.status !== "accepted") ?? [];
+  for (const action of pending) {
+    await acceptGridAction(action.id, action.rhythm === "daily" && action.addAs === "habit" ? "habit" : "task");
+  }
+  return delay(studioView());
 }

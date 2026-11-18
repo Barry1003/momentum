@@ -183,7 +183,7 @@ export function GrowthStudioCard() {
       <p className="mt-1 font-heading text-label text-text-muted">
         Life Audit · 4 of 12 reflections. Private, editable, yours to skip.
       </p>
-      <LinkButton href="/planner?view=growth-studio" variant="secondary" fullWidth={false} className="mt-4">
+      <LinkButton href="/growth?view=welcome" variant="secondary" fullWidth={false} className="mt-4">
         Continue Life Audit →
       </LinkButton>
     </section>

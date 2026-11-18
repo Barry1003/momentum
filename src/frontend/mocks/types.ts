@@ -149,6 +149,8 @@ export interface NewHabitInput {
   reminderTime?: string | null;
   goalName?: string | null;
   shareWithSquad?: boolean;
+  /** Short line under the name, e.g. "20 min". */
+  detail?: string;
   /** Habits made on the Habits screen start tomorrow; Quick create starts today. */
   startsTomorrow?: boolean;
 }
@@ -427,4 +429,67 @@ export interface AccountPreview {
   ownsSquadAlone: boolean;
   squadName: string | null;
   deletionScheduledFor: string | null;
+}
+
+export type AuditIcon = "rest" | "learning" | "work" | "people" | "health" | "money" | "home" | "spark";
+
+export interface AuditArea {
+  id: string;
+  name: string;
+  icon: AuditIcon;
+  /** 1 needs room … 5 well supported; null until reflected on. Never summed into a score. */
+  rating: number | null;
+  note: string;
+}
+
+export interface AuditQuestion {
+  id: string;
+  topic: string;
+  prompt: string;
+  hint: string;
+  answer: string;
+}
+
+export type ActionRhythm = "once" | "daily" | "weekly" | "monthly" | "seasonal";
+
+export interface GridAction {
+  id: string;
+  areaId: string;
+  title: string;
+  minutes: number;
+  addAs: "task" | "habit";
+  rhythm: ActionRhythm;
+  /** draft: yours, not in your plan. suggestion: Ari's idea. accepted: in Planner or Habits. */
+  status: "draft" | "suggestion" | "accepted";
+  rhythmChangedByYou: boolean;
+}
+
+export interface GridArea {
+  id: string;
+  name: string;
+  isDraft: boolean;
+}
+
+export interface HaradaGrid {
+  goalId: string;
+  goalTitle: string;
+  why: string;
+  areas: GridArea[];
+  actions: GridAction[];
+}
+
+export interface GrowthStudioState {
+  areas: AuditArea[];
+  questions: AuditQuestion[];
+  lastPausedAreaId: string | null;
+  grid: HaradaGrid | null;
+  /** Draft grid suggested from the reflections; nothing is saved until used. */
+  suggestedAreas: { name: string; quote: string | null }[];
+  reviewOpensInDays: number;
+}
+
+export interface AcceptHabitOptions {
+  days: number[];
+  targetMinutes: number;
+  reminderTime: string | null;
 }
