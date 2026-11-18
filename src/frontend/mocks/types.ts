@@ -1,4 +1,6 @@
-export type GrowthStage = "child" | "preteen" | "teen" | "youngAdult" | "adult";
+import type { GrowthStage } from "../companion/types";
+
+export type { GrowthStage };
 
 export interface CompanionState {
   stage: GrowthStage;

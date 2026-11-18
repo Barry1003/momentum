@@ -1,4 +1,5 @@
 export * from "./Card";
+export * from "./FaceAvatar";
 export * from "./Note";
 export * from "./Button";
 export * from "./Chip";

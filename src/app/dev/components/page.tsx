@@ -9,6 +9,7 @@ import {
   CheckOrb,
   ChipGroup,
   DayAgenda,
+  FaceAvatar,
   Field,
   HaradaGrid,
   HeroPortal,
@@ -30,6 +31,8 @@ import {
   Toast,
   WeekStrip,
 } from "@/frontend/components";
+import { Companion } from "@/frontend/companion";
+import type { CompanionReaction, GrowthStage } from "@/frontend/companion";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -49,6 +52,8 @@ export default function ComponentsPreviewPage() {
   const [selectedArea, setSelectedArea] = useState("rest");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+  const [companionStage, setCompanionStage] = useState<GrowthStage>("teen");
+  const [companionReaction, setCompanionReaction] = useState<CompanionReaction>("idle");
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 pt-10 pb-40">
@@ -148,8 +153,71 @@ export default function ComponentsPreviewPage() {
         <StatsRow stats={[{ value: "12", label: "Active days" }, { value: "4h 20m", label: "Focus time" }, { value: "18", label: "Tasks" }]} />
       </Section>
 
+      <Section title="Companion">
+        <ChipGroup
+          legend="Stage"
+          mode="single"
+          value={companionStage}
+          onChange={(value) => setCompanionStage(value as GrowthStage)}
+          options={[
+            { value: "child", label: "Child" },
+            { value: "preteen", label: "Preteen" },
+            { value: "teen", label: "Teen" },
+            { value: "youngAdult", label: "Young adult" },
+            { value: "adult", label: "Adult" },
+          ]}
+        />
+        <ChipGroup
+          legend="Reaction"
+          mode="single"
+          value={companionReaction}
+          onChange={(value) => setCompanionReaction(value as CompanionReaction)}
+          options={[
+            { value: "idle", label: "Idle" },
+            { value: "hello", label: "Hello" },
+            { value: "taskDone", label: "Task done" },
+            { value: "milestone", label: "Milestone" },
+            { value: "focus", label: "Focus" },
+          ]}
+        />
+        <div className="flex items-end gap-6 rounded-card bg-cream p-6">
+          <Companion
+            stage={companionStage}
+            reaction={companionReaction}
+            look={{ room: "lavender", outfit: "original" }}
+            size="hero"
+            onTap={() => setCompanionReaction("hello")}
+            onReactionEnd={() => setCompanionReaction("idle")}
+          />
+          <Companion
+            stage={companionStage}
+            reaction="idle"
+            look={{ room: "lavender", outfit: "original" }}
+            size="card"
+          />
+          <Companion
+            stage={companionStage}
+            reaction="idle"
+            look={{ room: "lavender", outfit: "original" }}
+            size="face"
+          />
+        </div>
+      </Section>
+
+      <Section title="FaceAvatar">
+        <div className="flex gap-3">
+          <FaceAvatar name="Zara" />
+          <FaceAvatar name="Malik" />
+          <FaceAvatar name="Kemi" />
+          <FaceAvatar name="Dayo" />
+        </div>
+      </Section>
+
       <Section title="AriBubble">
-        <AriBubble name="Ari" avatar={<div className="h-full w-full bg-accent-tint" />}>
+        <AriBubble
+          name="Ari"
+          avatar={<Companion stage={companionStage} reaction="idle" look={{ room: "lavender", outfit: "original" }} size="face" />}
+        >
           What should I call you?
         </AriBubble>
       </Section>
@@ -159,7 +227,9 @@ export default function ComponentsPreviewPage() {
           kicker="Teen stage"
           title="420 / 600 XP"
           tags={<><Tag tone="white">Solo</Tag><Tag tone="cream">5 day streak-free</Tag></>}
-          companionSlot={<div className="flex h-24 w-20 items-center justify-center rounded-card bg-surface text-meta text-text-muted">Ari</div>}
+          companionSlot={
+            <Companion stage={companionStage} reaction="idle" look={{ room: "lavender", outfit: "original" }} size="card" />
+          }
         >
           Ari is growing steadily.
         </HeroPortal>
