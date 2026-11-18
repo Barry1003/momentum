@@ -2,17 +2,178 @@
 
 :root {
   color-scheme: light;
-  --background: #f8f8fc;
-  --foreground: #17152c;
+
+  /* Momentum design tokens — see src/frontend/tokens for the TS source of truth. */
+  --color-text: #251b36;
+  --color-text-muted: #766e85;
+  --color-accent: #6b46c9;
+  --color-accent-strong: #4c319b;
+  --color-surface: #ffffff;
+  --color-outline: #e8e3f0;
+  --color-accent-tint: #efeafb;
+  --color-success: #237f68;
+  --color-success-tint: #e8f7f1;
+  --color-warning: #a96a27;
+  --color-warning-tint: #fff2e4;
+  --color-cream: #f9f2e5;
+
+  /* Dark theme (Focus screens, section 04) */
+  --color-dark-text: #ffffff;
+  --color-dark-text-muted: #c8beeb;
+  --color-dark-card: rgba(255, 255, 255, 0.08);
+
+  --gradient-app-background: linear-gradient(180deg, #f3effd 0%, #fcf8f3 100%);
+  --gradient-primary: linear-gradient(180deg, #9676e8 0%, #5c38ba 100%);
+
+  --shadow-raised: 0 12px 28px rgba(37, 27, 54, .10), 0 1px 2px rgba(37, 27, 54, .05), inset 0 1px 0 rgba(255, 255, 255, .9);
+  --shadow-floating: 0 20px 40px rgba(37, 27, 54, .20), 0 2px 4px rgba(37, 27, 54, .06), inset 0 1px 0 rgba(255, 255, 255, .9);
+  --shadow-pressable: 0 10px 20px rgba(76, 49, 155, .38), inset 0 1.5px 0 rgba(255, 255, 255, .35), inset 0 -3px 0 rgba(37, 27, 54, .25);
+  --shadow-pressable-active: 0 6px 12px rgba(76, 49, 155, .30), inset 0 1.5px 0 rgba(255, 255, 255, .35), inset 0 -3px 0 rgba(37, 27, 54, .25);
+  --shadow-inset: inset 0 2px 4px rgba(37, 27, 54, .10);
+
+  --radius-card: 24px;
+  --radius-note: 20px;
+  --radius-input: 20px;
+  --radius-button: 26px;
+  --radius-chip: 18px;
+  --radius-tag: 12px;
+}
+
+@theme inline {
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-accent: var(--color-accent);
+  --color-accent-strong: var(--color-accent-strong);
+  --color-surface: var(--color-surface);
+  --color-outline: var(--color-outline);
+  --color-accent-tint: var(--color-accent-tint);
+  --color-success: var(--color-success);
+  --color-success-tint: var(--color-success-tint);
+  --color-warning: var(--color-warning);
+  --color-warning-tint: var(--color-warning-tint);
+  --color-cream: var(--color-cream);
+  --color-dark-text: var(--color-dark-text);
+  --color-dark-text-muted: var(--color-dark-text-muted);
+  --color-dark-card: var(--color-dark-card);
+
+  --font-display: var(--font-nunito);
+  --font-heading: var(--font-dm-sans);
+
+  --text-display: 36px;
+  --text-display--line-height: 44px;
+  --text-title: 28px;
+  --text-title--line-height: 36px;
+  --text-heading: 20px;
+  --text-heading--line-height: 28px;
+  --text-body: 15px;
+  --text-body--line-height: 22px;
+  --text-label: 14px;
+  --text-label--line-height: 20px;
+  --text-meta: 12px;
+  --text-meta--line-height: 18px;
+
+  --radius-card: var(--radius-card);
+  --radius-note: var(--radius-note);
+  --radius-input: var(--radius-input);
+  --radius-button: var(--radius-button);
+  --radius-chip: var(--radius-chip);
+  --radius-tag: var(--radius-tag);
+
+  --shadow-raised: var(--shadow-raised);
+  --shadow-floating: var(--shadow-floating);
+  --shadow-pressable: var(--shadow-pressable);
+  --shadow-pressable-active: var(--shadow-pressable-active);
+  --shadow-inset: var(--shadow-inset);
 }
 
 body {
   min-height: 100vh;
   margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--gradient-app-background);
+  background-attachment: fixed;
+  color: var(--color-text);
+  font-family: var(--font-dm-sans), Arial, Helvetica, sans-serif;
 }
 
-* { box-sizing: border-box; }
-a { text-underline-offset: 3px; }
+* {
+  box-sizing: border-box;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes companion-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+@keyframes companion-bounce-sm {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-6px) scale(1.03); }
+  60% { transform: translateY(0) scale(1); }
+}
+
+@keyframes companion-bounce-lg {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-14px) scale(1.06); }
+  50% { transform: translateY(0) scale(1.02); }
+  75% { transform: translateY(-6px) scale(1.04); }
+}
+
+.animate-companion-breathe {
+  animation: companion-breathe 5s ease-in-out infinite;
+}
+
+.animate-companion-bounce-sm {
+  animation: companion-bounce-sm 0.8s ease-out 1;
+}
+
+.animate-companion-bounce-lg {
+  animation: companion-bounce-lg 1.2s ease-out 1;
+}
+
+
+/* Momentum launch treatment using the existing branded SVG mark. */
+.momentum-launch {
+  background: radial-gradient(circle at 50% 40%, #fff9ed 0%, #f4edfa 56%, #eee7ff 100%);
+}
+.momentum-launch-glow {
+  position: absolute;
+  width: min(88vw, 520px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(166,133,234,.32), rgba(166,133,234,0) 68%);
+  animation: momentum-glow 2.4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.momentum-launch-mark { animation: momentum-rise .8s cubic-bezier(.2,.8,.2,1) both; }
+.momentum-launch-dot { animation: momentum-pulse .9s ease-in-out infinite alternate; }
+@keyframes momentum-rise {
+  from { opacity: 0; transform: translateY(22px) scale(.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes momentum-glow {
+  from { opacity: .55; transform: scale(.92); }
+  to { opacity: 1; transform: scale(1.08); }
+}
+@keyframes momentum-pulse { to { opacity: .3; transform: scale(.7); } }
+@media (prefers-reduced-motion: reduce) {
+  .momentum-launch-glow, .momentum-launch-mark, .momentum-launch-dot { animation: none; }
+}
