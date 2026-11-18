@@ -2,10 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { AriBubble, Button, Field, Note, ScreenHeader } from "@/frontend/components";
-import { Companion } from "@/frontend/companion";
+import { Button, Field, Note, ScreenHeader } from "@/frontend/components";
+import { CompanionDialogue } from "@/frontend/onboarding/CompanionDialogue";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
 import { displayNameSchema } from "@/frontend/onboarding/schemas";
+
+const GREETING = [
+  "Hey! I'm Ari, your growth companion.",
+  "We'll take this one small step at a time. I'm right here with you.",
+  "First, what should I call you?",
+] as const;
 
 export default function YourNamePage() {
   const router = useRouter();
@@ -26,12 +32,8 @@ export default function YourNamePage() {
   return (
     <div className="flex flex-col gap-[18px]">
       <ScreenHeader kicker="Step 3 of 5" title="What should I call you?" onBack={() => router.back()} />
-
       <p className="font-heading text-body text-text-muted">A nickname is welcome. No legal name needed.</p>
-
-      <AriBubble name="Ari" avatar={<Companion stage="child" reaction="idle" look={{ room: "lavender", outfit: "original" }} size="face" />}>
-        Hi! I&apos;m your companion. What should I call you?
-      </AriBubble>
+      <CompanionDialogue messages={GREETING} />
 
       <Field
         label="Display name"
@@ -43,12 +45,8 @@ export default function YourNamePage() {
         helperText={`${name.length} / 24`}
         errorText={error ?? undefined}
       />
-
       <Note tone="tint">This is the name your squad sees, if you join one.</Note>
-
-      <Button variant="primary" onClick={handleContinue}>
-        Continue
-      </Button>
+      <Button variant="primary" onClick={handleContinue}>Continue</Button>
     </div>
   );
 }
