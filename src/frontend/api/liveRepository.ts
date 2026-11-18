@@ -232,3 +232,10 @@ export async function rescheduleCarryOver():Promise<PlannerData>{
  if(plan.carryOver)await request(`/api/tasks/${encodeURIComponent(plan.carryOver.id)}`,"PATCH",{dueDate:null});
  return getPlanner();
 }
+
+export async function createGoal(title: string, shared = false): Promise<void> {
+ const raw = await workspace();
+ const squadId = shared ? raw.squads[0]?.squadId : undefined;
+ if (shared && !squadId) throw new Error("Join a squad before sharing goals");
+ await request("/api/goals", "POST", { title: title.trim(), ...(squadId ? { squadId } : {}) });
+}
