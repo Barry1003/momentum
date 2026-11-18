@@ -33,7 +33,7 @@ export default function OnboardingReadyPage() {
         </p>
       </div>
       <StatsRow className="w-full" stats={[{ value: "Child", label: "Stage" }, { value: "0 XP", label: "To start" }]} />
-      <p className="text-center font-heading text-meta text-text-muted">Preview mode: your setup isn't saved to an account yet.</p>
+      <p className="text-center font-heading text-meta text-text-muted">Preview mode: your setup isn&apos;t saved to an account yet.</p>
       <Button variant="primary" onClick={finish}>
         {data.path === "squad" ? "Enter Squad Room preview" : "Go to My Space"}
       </Button>
