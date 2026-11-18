@@ -19,8 +19,8 @@ export const mockHabits: Habit[] = [
 ];
 
 export const mockSquadMembers: SquadMember[] = [
-  { id: "member-1", name: "Zara", avatarInitial: "Z", isCheckedInToday: true, isFocusing: false, stage: "adult" },
-  { id: "member-2", name: "Malik", avatarInitial: "M", isCheckedInToday: false, isFocusing: true, stage: "youngAdult" },
+  { id: "member-1", name: "Zara", avatarInitial: "Z", isCheckedInToday: true, isFocusing: true, stage: "adult" },
+  { id: "member-2", name: "Malik", avatarInitial: "M", isCheckedInToday: true, isFocusing: false, stage: "youngAdult" },
   { id: "member-3", name: "Kemi", avatarInitial: "K", isCheckedInToday: true, isFocusing: false, stage: "teen" },
   { id: "member-4", name: "Dayo", avatarInitial: "D", isCheckedInToday: false, isFocusing: false, stage: "preteen" },
 ];
