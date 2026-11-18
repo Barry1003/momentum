@@ -3,73 +3,120 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button, Field } from "@/frontend/components";
+import { Button } from "@/frontend/components";
 import { GoogleMark } from "@/frontend/components/GoogleMark";
+import { AuthScene, SocialButtons } from "@/frontend/onboarding/AuthScene";
+import { ClayField, ClayPasswordField } from "@/frontend/onboarding/ClayField";
+import { OnboardingProgress } from "@/frontend/onboarding/OnboardingProgress";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
-import { displayNameSchema, emailSchema } from "@/frontend/onboarding/schemas";
+import { AppleMark, MailIcon } from "@/frontend/onboarding/icons";
+import { emailSchema, passwordScore } from "@/frontend/onboarding/schemas";
+
+const STRENGTH_LABEL = ["", "Keep going", "Getting there", "Good", "Strong"] as const;
 
 export default function CreateAccountPage() {
   const router = useRouter();
   const { data, update } = useOnboarding();
-  const [name, setName] = useState(data.displayName);
   const [email, setEmail] = useState(data.email);
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [googleNotice, setGoogleNotice] = useState(false);
-  const strong = password.length >= 12 && /[a-z]/i.test(password) && /\d/.test(password);
-  const passwordScore = [password.length >= 8, password.length >= 12, /[A-Z]/.test(password) && /[a-z]/.test(password), /\d/.test(password) && /[^\w\s]/.test(password)].filter(Boolean).length;
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const score = passwordScore(password);
 
-  function handleContinue() {
-    const validName = displayNameSchema.safeParse(name);
+  function handleCreate() {
     const validEmail = emailSchema.safeParse(email);
-    if (!validName.success) { setError(validName.error.issues[0]?.message ?? "Enter your name."); return; }
-    if (!validEmail.success) { setError(validEmail.error.issues[0]?.message ?? "Enter a valid email."); return; }
-    if (password.length < 8) { setError("Use a password of at least 8 characters."); return; }
-    // Do not store passwords or pretend an account was created. This is a
-    // visual onboarding preview pending the separate auth integration.
-    update({ email: validEmail.data, displayName: validName.data });
+    let isValid = true;
+    if (!validEmail.success) {
+      setEmailError(validEmail.error.issues[0]?.message ?? "Enter a valid email.");
+      isValid = false;
+    }
+    if (password.length < 8) {
+      setPasswordError("Use at least 8 characters.");
+      isValid = false;
+    }
+    if (!isValid || !validEmail.success) return;
+    // Never store the password. The account itself is created by the
+    // auth integration; this preview only carries the email forward.
+    update({ email: validEmail.data });
     router.push("/onboarding/verify-email");
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-6rem)] flex-col gap-6">
-      <div className="flex items-center gap-2 pt-3" aria-label="Onboarding step 1 of 5">
-        {[0,1,2,3,4].map(i => <span key={i} className={`h-1.5 flex-1 rounded-full ${i===0 ? "bg-[image:var(--gradient-primary)]" : "bg-accent-tint"}`} />)}
-        <span className="ml-1 shrink-0 font-heading text-meta text-text-muted">1 of 5</span>
-      </div>
-      <header>
-        <h1 className="font-display text-display font-extrabold text-text">Create your account</h1>
-        <p className="mt-2 font-heading text-body text-text-muted">Your space is private from the first minute.</p>
-      </header>
-      <button type="button" onClick={() => setGoogleNotice(true)} className="flex items-center justify-center gap-3 rounded-button bg-surface px-5 py-4 font-heading text-label font-bold text-text shadow-raised">
-        <GoogleMark className="size-5" /> Continue with Google
-      </button>
-      {googleNotice ? <p className="font-heading text-meta text-warning" role="status">Google sign-in will be available when the authentication service is connected. No account has been created.</p> : null}
-      <div className="flex items-center gap-3"><span className="h-px flex-1 bg-outline" /><span className="font-heading text-meta text-text-muted">or with email</span><span className="h-px flex-1 bg-outline" /></div>
+    <AuthScene
+      title="Join Momentum"
+      subtitle="Start your journey, one small step at a time"
+      greeting="Hi! I'm Ari"
+      stage="child"
+      topSlot={<OnboardingProgress step={1} />}
+      footer={
+        <p className="font-heading text-label text-text-muted">
+          Already have an account?{" "}
+          <Link href="/onboarding/sign-in" className="font-bold text-accent-strong">
+            Log in
+          </Link>
+        </p>
+      }
+    >
+      <form
+        noValidate
+        className="flex flex-col gap-3.5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleCreate();
+        }}
+      >
+        <ClayField
+          label="Email"
+          icon={<MailIcon className="h-5 w-5" />}
+          type="email"
+          autoComplete="email"
+          placeholder="Email"
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            setEmailError(null);
+          }}
+          errorText={emailError ?? undefined}
+        />
+        <ClayPasswordField
+          label="Password"
+          autoComplete="new-password"
+          placeholder="Password (8+ characters)"
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            setPasswordError(null);
+          }}
+          errorText={passwordError ?? undefined}
+        />
+        {password ? (
+          <div className="flex items-center gap-1.5 px-2" aria-live="polite">
+            {[1, 2, 3, 4].map((level) => (
+              <span key={level} className={`h-1.5 flex-1 rounded-full ${level <= score ? "bg-success" : "bg-accent-tint"}`} />
+            ))}
+            <span className="ml-1 w-20 text-right font-heading text-meta text-success">{STRENGTH_LABEL[score]}</span>
+          </div>
+        ) : null}
+        <Button type="submit" fullWidth={false} className="mt-1 w-full">
+          Create account
+        </Button>
+      </form>
 
-      <div className="flex flex-col gap-5">
-        <Field label="Your name" value={name} onChange={event => { setName(event.target.value); setError(null); }} placeholder="Ari Okafor" />
-        <Field label="Email" type="email" value={email} onChange={event => { setEmail(event.target.value); setError(null); }} placeholder="ari@example.com" />
-        <div className="flex flex-col gap-2">
-          <label htmlFor="momentum-signup-password" className="font-heading text-label font-bold text-text">Password</label>
-          <div className="flex items-center rounded-input border border-outline bg-surface px-4 py-1 shadow-inset focus-within:outline-2 focus-within:outline-accent">
-            <input id="momentum-signup-password" value={password} onChange={event => { setPassword(event.target.value); setError(null); }} type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="At least 8 characters" className="w-full min-w-0 flex-1 bg-transparent py-3 font-heading text-body text-text outline-none" />
-            <button type="button" onClick={() => setShowPassword(value => !value)} className="ml-2 font-heading text-label font-bold text-accent-strong">{showPassword ? "Hide" : "Show"}</button>
-          </div>
-          <div className="flex items-center gap-1.5" aria-label={`Password strength: ${passwordScore} of 4`}>
-            {[0,1,2,3].map(i => <span key={i} className={`h-1.5 flex-1 rounded-full ${i<passwordScore ? "bg-success" : "bg-accent-tint"}`} />)}
-            <span className="ml-1 font-heading text-meta text-success">{strong ? "Strong" : password.length ? "Keep going" : ""}</span>
-          </div>
-        </div>
-      </div>
-      {error ? <p role="alert" className="font-heading text-meta text-warning">{error}</p> : null}
-      <div className="mt-auto flex flex-col gap-4 pt-6">
-        <p className="text-center font-heading text-meta text-text-muted">By continuing you agree to the Terms and Privacy Policy.</p>
-        <Button onClick={handleContinue}>Create account</Button>
-        <p className="text-center font-heading text-meta text-text-muted">Already have an account? <Link href="/onboarding/sign-in" className="font-bold text-accent-strong">Sign in</Link></p>
-        <p className="text-center font-heading text-meta text-warning">UI preview only: no account or verification email is created yet.</p>
-      </div>
-    </div>
+      {notice ? (
+        <p role="status" className="text-center font-heading text-meta text-warning">
+          {notice}
+        </p>
+      ) : null}
+
+      <SocialButtons
+        onSelect={(provider) =>
+          setNotice(`${provider === "google" ? "Google" : "Apple"} sign-up will work once accounts are connected. No account was created.`)
+        }
+        google={<GoogleMark className="h-6 w-6" />}
+        apple={<AppleMark className="h-6 w-6 text-text" />}
+      />
+      <p className="text-center font-heading text-meta text-text-muted">By continuing you agree to the Terms and Privacy Policy.</p>
+    </AuthScene>
   );
 }

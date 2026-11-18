@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button, Note, ScreenHeader } from "@/frontend/components";
-import { Companion } from "@/frontend/companion";
+import { Companion, GreetingBubble, useGreeting } from "@/frontend/companion";
+import { OnboardingProgress } from "@/frontend/onboarding/OnboardingProgress";
+import { StepShell } from "@/frontend/onboarding/StepShell";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
 
 const CODE_LENGTH = 6;
@@ -14,6 +16,9 @@ export default function VerifyEmailPage() {
   const { data } = useOnboarding();
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [error, setError] = useState<string | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
+  const [resentNotice, setResentNotice] = useState(false);
+  const greeting = useGreeting(600);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -59,8 +64,15 @@ export default function VerifyEmailPage() {
 
   function handleVerify() {
     if (!isComplete) return;
+    // Preview-only examples until the auth service verifies real codes:
+    // 000000 = wrong code, 111111 = expired code.
     if (code === "000000") {
       setError("That code didn't work — check and try again.");
+      return;
+    }
+    if (code === "111111") {
+      setIsExpired(true);
+      setError(null);
       return;
     }
     router.push("/onboarding/name");
@@ -68,15 +80,43 @@ export default function VerifyEmailPage() {
 
   function handleResend() {
     setSecondsLeft(RESEND_SECONDS);
+    setIsExpired(false);
+    setError(null);
+    setDigits(Array(CODE_LENGTH).fill(""));
+    setResentNotice(true);
+    inputRefs.current[0]?.focus();
   }
 
   return (
+    <StepShell>
     <div className="flex flex-col gap-5">
-      <ScreenHeader kicker="Step 2 of 5" title="Check your inbox" onBack={() => router.back()} />
+      <OnboardingProgress step={2} />
+      <ScreenHeader title={isExpired ? "Let’s try that again" : "Check your inbox"} onBack={() => router.back()} />
 
-      <div className="flex items-center justify-center gap-2">
-        <Companion stage="child" reaction="idle" look={{ room: "lavender", outfit: "original" }} size="card" />
+      <div className="relative flex items-end justify-center gap-2">
+        <Companion
+          stage="child"
+          reaction={greeting.reaction}
+          look={{ room: "lavender", outfit: "original" }}
+          size="card"
+          onTap={greeting.sayHello}
+          onReactionEnd={greeting.onReactionEnd}
+        />
+        <GreetingBubble visible={greeting.hasGreeted} className="mb-16">
+          {isExpired ? "No worries, we’ll send a fresh one." : "I’ll wait right here."}
+        </GreetingBubble>
       </div>
+
+      {isExpired ? (
+        <Note tone="warning" title="That code has expired">
+          Codes last 10 minutes. You haven’t lost your place — send a new one.
+        </Note>
+      ) : null}
+      {resentNotice && !isExpired ? (
+        <Note tone="success" title="New code on its way">
+          Your old code no longer works.
+        </Note>
+      ) : null}
 
       <div className="flex items-center justify-between">
         <p className="font-heading text-meta text-text-muted">We sent a 6-digit code to {data.email || "your email"}.</p>
@@ -124,7 +164,13 @@ export default function VerifyEmailPage() {
       <Button variant="primary" disabled={!isComplete} onClick={handleVerify}>
         Verify and continue
       </Button>
+      {isExpired ? (
+        <Button variant="secondary" onClick={handleResend}>
+          Send a new code
+        </Button>
+      ) : null}
       <p className="text-center font-heading text-meta text-text-muted">Button turns on when all 6 digits are in.</p>
     </div>
+    </StepShell>
   );
 }

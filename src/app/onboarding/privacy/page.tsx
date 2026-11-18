@@ -2,7 +2,10 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Button, CheckOrb, ListCard, ListCardRow, ScreenHeader } from "@/frontend/components";
+import { useState } from "react";
+import { Button, CheckOrb, ListCard, ListCardRow, Note, ScreenHeader } from "@/frontend/components";
+import { OnboardingProgress } from "@/frontend/onboarding/OnboardingProgress";
+import { StepShell } from "@/frontend/onboarding/StepShell";
 import meIcon from "@/frontend/assets/icons/me.svg";
 import playIcon from "@/frontend/assets/icons/play.svg";
 
@@ -10,10 +13,13 @@ const ONLY_YOU = ["Tasks, goals and notes", "Check-ins and reflections", "Life A
 
 export default function PrivacyPage() {
   const router = useRouter();
+  const [showDetails, setShowDetails] = useState(false);
 
   return (
+    <StepShell>
     <div className="flex flex-col gap-[18px]">
-      <ScreenHeader kicker="Step 5 of 5" title="Your space. Your choice." onBack={() => router.back()} />
+      <OnboardingProgress step={5} />
+      <ScreenHeader title="Your space. Your choice." onBack={() => router.back()} />
       <p className="font-heading text-body text-text-muted">A few things worth knowing before you begin.</p>
 
       <ListCard groupTitle="Only you">
@@ -47,8 +53,16 @@ export default function PrivacyPage() {
         <Button variant="primary" onClick={() => router.push("/onboarding/path")}>
           Got it
         </Button>
-        <Button variant="secondary">Privacy details</Button>
+        <Button variant="secondary" onClick={() => setShowDetails((value) => !value)} aria-expanded={showDetails}>
+          {showDetails ? "Hide privacy details" : "Privacy details"}
+        </Button>
+        {showDetails ? (
+          <Note tone="tint" title="How sharing works">
+            Nothing about you is shared until you join a squad and switch it on. You can turn each item off again at any time in Me → Privacy, and your notes, reflections and Life Audit answers are never shared.
+          </Note>
+        ) : null}
       </div>
     </div>
+    </StepShell>
   );
 }

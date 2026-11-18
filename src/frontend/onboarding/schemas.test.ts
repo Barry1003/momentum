@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { companionNameSchema, displayNameSchema, emailSchema } from "./schemas";
+import { companionNameSchema, displayNameSchema, emailSchema, passwordScore, squadCodeSchema } from "./schemas";
 
 describe("onboarding schemas", () => {
   it("accepts a valid email and rejects a malformed one", () => {
@@ -19,5 +19,18 @@ describe("onboarding schemas", () => {
     expect(companionNameSchema.safeParse("Ari").success).toBe(true);
     expect(companionNameSchema.safeParse("").success).toBe(false);
     expect(companionNameSchema.safeParse("A".repeat(21)).success).toBe(false);
+  });
+});
+
+describe("onboarding helpers", () => {
+  it("scores password strength from 0 to 4", () => {
+    expect(passwordScore("")).toBe(0);
+    expect(passwordScore("abcdefgh")).toBe(1);
+    expect(passwordScore("Abcdefghijk1!")).toBe(4);
+  });
+
+  it("accepts squad invite codes in any case and rejects malformed ones", () => {
+    expect(squadCodeSchema.safeParse("north-4821").success).toBe(true);
+    expect(squadCodeSchema.safeParse("NORTH4821").success).toBe(false);
   });
 });

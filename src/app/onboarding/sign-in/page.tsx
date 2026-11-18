@@ -2,44 +2,99 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Button, Field, FaceAvatar, Logo } from "@/frontend/components";
+import { Button } from "@/frontend/components";
 import { GoogleMark } from "@/frontend/components/GoogleMark";
-import { Companion } from "@/frontend/companion";
+import { AuthScene, SocialButtons } from "@/frontend/onboarding/AuthScene";
+import { ClayField, ClayPasswordField } from "@/frontend/onboarding/ClayField";
+import { AppleMark, MailIcon } from "@/frontend/onboarding/icons";
+import { emailSchema } from "@/frontend/onboarding/schemas";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [notice, setNotice] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  function handleLogin() {
+    const result = emailSchema.safeParse(email);
+    if (!result.success) {
+      setEmailError(result.error.issues[0]?.message ?? "Enter your email.");
+      return;
+    }
+    if (!password) {
+      setNotice("Enter your password to log in.");
+      return;
+    }
+    // Authentication is a separate backend decision; never fake a session.
+    setNotice("Log in isn’t connected yet in this preview. Nothing was sent.");
+  }
 
   return (
-    <div className="flex flex-col gap-8 md:flex-row md:items-center md:gap-16">
-      <div className="hidden flex-1 flex-col items-center gap-4 md:flex">
-        <Logo />
-        <Companion stage="adult" reaction="idle" look={{ room: "lavender", outfit: "original" }} size="hero" />
-        <div className="flex items-center gap-3 rounded-card bg-surface p-4 shadow-raised">
-          <FaceAvatar name="You" size={40} />
-          <div>
-            <p className="font-heading text-label font-bold text-text">Welcome back</p>
-            <p className="font-heading text-meta text-text-muted">Your space kept everything just as you left it.</p>
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col gap-[18px]">
-        <div className="mb-3"><div className="md:hidden"><Logo /></div>
-          <h1 className="mt-8 font-display text-title font-extrabold text-text">Welcome back</h1>
-          <p className="mt-1 font-heading text-meta text-text-muted">Sign in to pick up where you left off.</p>
-        </div>
-        <button type="button" onClick={() => setNotice(true)} className="flex items-center justify-center gap-3 rounded-button bg-surface px-5 py-4 font-heading text-label font-bold text-text shadow-raised">
-          <GoogleMark className="size-5" /> Continue with Google
-        </button>
-        <div className="flex items-center gap-3"><span className="h-px flex-1 bg-outline" /><span className="font-heading text-meta text-text-muted">or with email</span><span className="h-px flex-1 bg-outline" /></div>
-        <Field label="Email" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="ari@example.com" />
-        <Field label="Password" type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder="••••••••" />
-        <Link href="/onboarding/cant-get-in" className="self-end font-heading text-meta font-bold text-accent-strong">Forgot password?</Link>
-        <Button variant="primary" onClick={() => setNotice(true)}>Sign in</Button>
-        {notice ? <p role="status" className="font-heading text-meta text-warning">Sign-in is not connected in this frontend preview. No authentication has occurred.</p> : null}
-        <p className="text-center font-heading text-meta text-text-muted">New here? <Link href="/onboarding/create-account" className="font-bold text-accent-strong">Create an account</Link></p>
-      </div>
-    </div>
+    <AuthScene
+      title="Welcome Back"
+      subtitle="Log in to continue your journey"
+      greeting="Welcome back!"
+      footer={
+        <p className="font-heading text-label text-text-muted">
+          Don&apos;t have an account?{" "}
+          <Link href="/onboarding/create-account" className="font-bold text-accent-strong">
+            Sign up
+          </Link>
+        </p>
+      }
+    >
+      <form
+        noValidate
+        className="flex flex-col gap-3.5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleLogin();
+        }}
+      >
+        <ClayField
+          label="Email"
+          icon={<MailIcon className="h-5 w-5" />}
+          type="email"
+          autoComplete="email"
+          placeholder="Email"
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            setEmailError(null);
+          }}
+          errorText={emailError ?? undefined}
+        />
+        <ClayPasswordField
+          label="Password"
+          autoComplete="current-password"
+          placeholder="Password"
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            setNotice(null);
+          }}
+        />
+        <Link href="/onboarding/cant-get-in" className="self-end pr-2 font-heading text-meta font-bold text-accent-strong">
+          Forgot password?
+        </Link>
+        <Button type="submit" fullWidth={false} className="w-full">
+          Log in
+        </Button>
+      </form>
+
+      {notice ? (
+        <p role="status" className="text-center font-heading text-meta text-warning">
+          {notice}
+        </p>
+      ) : null}
+
+      <SocialButtons
+        onSelect={(provider) =>
+          setNotice(`${provider === "google" ? "Google" : "Apple"} sign-in will work once accounts are connected. No account was used.`)
+        }
+        google={<GoogleMark className="h-6 w-6" />}
+        apple={<AppleMark className="h-6 w-6 text-text" />}
+      />
+    </AuthScene>
   );
 }

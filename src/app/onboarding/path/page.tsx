@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Button, ScreenHeader } from "@/frontend/components";
 import { cn } from "@/frontend/lib/cn";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
+import { OnboardingProgress } from "@/frontend/onboarding/OnboardingProgress";
+import { StepShell } from "@/frontend/onboarding/StepShell";
 
 const OPTIONS = [
   {
@@ -31,7 +33,9 @@ export default function OnboardingPathPage() {
   }
 
   return (
+    <StepShell>
     <div className="flex flex-col gap-[18px]">
+      <OnboardingProgress step={6} />
       <ScreenHeader kicker="Almost there" title="On your own, or with a squad?" onBack={() => router.back()} />
 
       <div className="flex flex-col gap-3">
@@ -40,6 +44,7 @@ export default function OnboardingPathPage() {
             key={option.value}
             type="button"
             onClick={() => setChoice(option.value)}
+            aria-pressed={choice === option.value}
             className={cn(
               "rounded-card bg-surface p-5 text-left shadow-raised transition-colors duration-150",
               choice === option.value && "border-2 border-accent shadow-floating",
@@ -55,5 +60,6 @@ export default function OnboardingPathPage() {
         Continue
       </Button>
     </div>
+    </StepShell>
   );
 }

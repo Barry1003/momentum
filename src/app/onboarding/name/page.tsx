@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Button, Field, Note, ScreenHeader } from "@/frontend/components";
 import { CompanionDialogue } from "@/frontend/onboarding/CompanionDialogue";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
+import { OnboardingProgress } from "@/frontend/onboarding/OnboardingProgress";
+import { StepShell } from "@/frontend/onboarding/StepShell";
 import { displayNameSchema } from "@/frontend/onboarding/schemas";
 
 const GREETING = [
@@ -30,8 +32,10 @@ export default function YourNamePage() {
   }
 
   return (
+    <StepShell>
     <div className="flex flex-col gap-[18px]">
-      <ScreenHeader kicker="Step 3 of 5" title="What should I call you?" onBack={() => router.back()} />
+      <OnboardingProgress step={3} />
+      <ScreenHeader title="What should I call you?" onBack={() => router.back()} />
       <p className="font-heading text-body text-text-muted">A nickname is welcome. No legal name needed.</p>
       <CompanionDialogue messages={GREETING} />
 
@@ -48,5 +52,6 @@ export default function YourNamePage() {
       <Note tone="tint">This is the name your squad sees, if you join one.</Note>
       <Button variant="primary" onClick={handleContinue}>Continue</Button>
     </div>
+    </StepShell>
   );
 }
