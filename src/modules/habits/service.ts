@@ -55,14 +55,14 @@ export async function archiveHabit(id: string, userId: string) {
   return { archived: true };
 }
 
-export async function changeHabitPause(id: string, userId: string, paused: boolean) {
+export async function changeHabitPause(id: string, userId: string, paused: boolean, weeks: number | null = null) {
   const habit = await getHabit(id, userId);
   if (habit.status === "ARCHIVED") throw missing();
   return db().habit.update({
     where: { id }, data: {
       status: paused ? "PAUSED" : "ACTIVE",
       pausedAt: paused ? habit.pausedAt ?? new Date() : null,
-      pausedUntil: null,
+      pausedUntil: paused && weeks ? asUtcDate(new Date(Date.now() + weeks * 7 * 86400000).toISOString().slice(0, 10)) : null,
     },
   });
 }
@@ -77,7 +77,13 @@ async function validateLogDate(userId: string, date: string) {
 
 export async function logHabit(id: string, userId: string, date: string, value: number) {
   const habit = await getHabit(id, userId);
-  if (habit.status !== "ACTIVE") throw new SquadError("HABIT_PAUSED", 409, "Resume this habit to log progress");
+  if (habit.status !== "ACTIVE") {
+    const today = new Date().toISOString().slice(0, 10);
+    if (!habit.pausedUntil || habit.pausedUntil.toISOString().slice(0, 10) >= today) {
+      throw new SquadError("HABIT_PAUSED", 409, "Resume this habit to log progress");
+    }
+    await db().habit.update({ where: { id }, data: { status: "ACTIVE", pausedAt: null, pausedUntil: null } });
+  }
   await validateLogDate(userId, date);
   const completed = isCompleted(habit.targetType, habit.targetValue, value);
   const log = await db().habitLog.upsert({
