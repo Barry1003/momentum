@@ -39,7 +39,7 @@ Set `DATABASE_URL` (Neon pooled), `DATABASE_URL_UNPOOLED` (migration direct URL)
 
 ## Required integration and release gates
 
-- [ ] Prisma schema reconciliation against installed Better Auth 1.7.24 and manual review of migration diff, then isolated Neon development migration. No live migrations are performed by this PR.
+- [x] Generate an initial Prisma SQL migration draft offline (`prisma/migrations/20261118_onboarding_foundation/migration.sql`); no database connection was made.\n- [ ] Review generated identity models with Better Auth 1.7.24, SQL constraints, account linking, and permission semantics, then apply the migration in an isolated development Neon database. **No live migrations are performed by this PR.**
 - [ ] Real registration, six-digit email verification, resend, session cookie, Google callback and password reset tests. Validate OTP auto sign-in behavior.
 - [ ] Test reload-resume after NAME, COMPANION, PATH, SQUAD and COMPLETE, including private browsing and invalidated sessions.
 - [ ] Test two users: solo onboarding, squad creation, invitation preview/accept, server capacity and role checks, and former-member revocation.
