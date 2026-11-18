@@ -73,7 +73,6 @@ export function AppShell({ active, children, onAddTask, onAddHabit }: AppShellPr
           await onAddHabit?.(input);
           setToast(`New habit: ${input.name}`);
         }}
-        onNotice={showToast}
       />
       {toast ? <Toast message={toast} onDismiss={dismissToast} /> : null}
     </ShellContext.Provider>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Button, Sheet } from "../components";
 import { cn } from "../lib/cn";
+import { createGoal } from "../mocks/repository";
 import type { NewHabitInput, NewTaskInput } from "../mocks/types";
 import { CheckIcon, PlayIcon, SparkleIcon, WaterIcon } from "./icons";
 
@@ -36,7 +37,6 @@ export interface QuickCreateSheetProps {
   onClose: () => void;
   onAddTask: (input: NewTaskInput) => Promise<void>;
   onAddHabit: (input: NewHabitInput) => Promise<void>;
-  onNotice: (message: string) => void;
 }
 
 function ToggleChip({ label, pressed, onToggle }: { label: string; pressed: boolean; onToggle: () => void }) {
@@ -56,7 +56,7 @@ function ToggleChip({ label, pressed, onToggle }: { label: string; pressed: bool
 }
 
 /** Quick create (+): add a task, habit, goal or start focus from anywhere. Figma 02 · Home, step 04. */
-export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddHabit, onNotice }: QuickCreateSheetProps) {
+export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddHabit }: QuickCreateSheetProps) {
   const router = useRouter();
   const [kind, setKind] = useState<QuickCreateKind>(initialKind);
   const [title, setTitle] = useState("");
@@ -87,7 +87,8 @@ export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddH
       } else if (kind === "habit") {
         await onAddHabit({ name: trimmed, targetCount: habitTarget });
       } else if (kind === "goal") {
-        onNotice("Goals arrive with the Plan screens. Nothing was saved yet.");
+        const goal = await createGoal({ title: trimmed });
+        router.push(`/goals/${goal.id}`);
       } else {
         router.push("/focus");
       }
