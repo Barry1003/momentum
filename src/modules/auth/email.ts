@@ -32,14 +32,14 @@ export async function sendAuthenticationEmail(message: Message): Promise<void> {
 export async function sendCodeEmail(message: {
   to: string;
   code: string;
-  type: "email-verification" | "sign-in" | "forget-password";
+  type: "email-verification" | "sign-in" | "forget-password" | "change-email";
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.AUTH_EMAIL_FROM;
   if (!apiKey || !from) throw new Error("Email provider is not configured");
   const subject = message.type === "email-verification"
     ? "Verify your Momentum account"
-    : message.type === "sign-in" ? "Your Momentum sign-in code" : "Your Momentum recovery code";
+    : message.type === "sign-in" ? "Your Momentum sign-in code" : message.type === "change-email" ? "Confirm your Momentum email change" : "Your Momentum recovery code";
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
