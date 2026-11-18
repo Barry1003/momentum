@@ -16,7 +16,7 @@ describe("launch destination", () => {
   });
 
   it("distinguishes squad members from solo users after setup", () => {
-    expect(resolveLaunchDestination({ status: "signed-in", onboardingComplete: true, hasSquad: true })).toBe("/home");
-    expect(resolveLaunchDestination({ status: "signed-in", onboardingComplete: true, hasSquad: false })).toBe("/my-space");
+    expect(resolveLaunchDestination({ status: "signed-in", onboardingComplete: true, hasSquad: true })).toBe("/home?tab=squad");
+    expect(resolveLaunchDestination({ status: "signed-in", onboardingComplete: true, hasSquad: false })).toBe("/home");
   });
 });

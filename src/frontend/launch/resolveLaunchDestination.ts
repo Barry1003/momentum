@@ -15,7 +15,7 @@ export type LaunchDestination =
   | "/onboarding/sign-in"
   | "/onboarding/name"
   | "/home"
-  | "/my-space";
+  | "/home?tab=squad";
 
 export function resolveLaunchDestination(identity: LaunchIdentity): LaunchDestination {
   if (identity.status === "checking") return null;
@@ -23,5 +23,6 @@ export function resolveLaunchDestination(identity: LaunchIdentity): LaunchDestin
     return identity.hasVisitedBefore ? "/onboarding/sign-in" : "/onboarding";
   }
   if (!identity.onboardingComplete) return "/onboarding/name";
-  return identity.hasSquad ? "/home" : "/my-space";
+  // Everyone lands on Home (My Space). Squad members open on the Squad Room tab.
+  return identity.hasSquad ? "/home?tab=squad" : "/home";
 }
