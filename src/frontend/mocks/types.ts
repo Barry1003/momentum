@@ -386,3 +386,45 @@ export interface CheckInStatus {
   /** What saving today's check-in earns, decided by the server. */
   xpForCheckIn: number;
 }
+
+export interface PrivacySettings {
+  shareCheckedIn: boolean;
+  shareFocusStatus: boolean;
+  shareFinishedSharedTasks: boolean;
+  shareGrowthStage: boolean;
+  shareStreaksAndXp: boolean;
+}
+
+export interface ReminderSettings {
+  morningPlan: boolean;
+  morningPlanTime: string;
+  eveningCheckIn: boolean;
+  eveningCheckInTime: string;
+  habitReminders: boolean;
+  squadCheers: boolean;
+  reviewDay: boolean;
+}
+
+export type QuietDays = "everyDay" | "weeknights" | "weekends" | "custom";
+
+export interface QuietHours {
+  enabled: boolean;
+  from: string;
+  to: string;
+  days: QuietDays;
+  customDays: number[];
+}
+
+export interface ProfileDetails {
+  handle: string;
+  intention: string;
+}
+
+export interface AccountPreview {
+  email: string;
+  pendingEmail: string | null;
+  export: { state: "none" | "preparing" | "ready"; requestedAt: string | null; fileName: string | null };
+  ownsSquadAlone: boolean;
+  squadName: string | null;
+  deletionScheduledFor: string | null;
+}

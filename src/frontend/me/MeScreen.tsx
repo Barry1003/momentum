@@ -112,7 +112,6 @@ export function MeScreen() {
   const stageLabel = GROWTH_STAGES[index]?.label ?? "";
   const next = GROWTH_STAGES[index + 1];
   const toGo = overview?.xpToNextStage ? Math.max(0, overview.xpToNextStage - overview.xp) : null;
-  const comingNext = (what: string) => () => showToast(`${what} arrives with the next Me screens (07c–07d).`);
   const earned = (achievements ?? []).filter((item) => item.earnedOn);
   const inProgress = (achievements ?? []).filter((item) => !item.earnedOn);
 
@@ -451,7 +450,7 @@ export function MeScreen() {
                 <ul className="divide-y divide-outline">
                   <MenuRow href="/me/studio" icon={<SparkleIcon className="h-5 w-5" />} title="Character Studio" detail="Look, room, stage colour, extras" />
                   <MenuRow href="/me?view=achievements" icon={<ReadIcon className="h-5 w-5" />} title="Achievements" detail={`${overview.achievementsEarned} earned · never taken away`} />
-                  <MenuRow onClick={comingNext("Edit profile")} icon={<SparkleIcon className="h-5 w-5" />} title="Edit profile" detail="Name, handle, private intention" />
+                  <MenuRow href="/me/settings?view=profile" icon={<SparkleIcon className="h-5 w-5" />} title="Edit profile" detail="Name, handle, private intention" />
                 </ul>
               </Panel>
             </>
@@ -460,10 +459,10 @@ export function MeScreen() {
             <>
               <Panel>
                 <ul className="divide-y divide-outline">
-                  <MenuRow onClick={comingNext("Privacy & sharing")} icon={<CheckIcon className="h-5 w-5" />} title="Privacy & sharing" detail="Private by default" />
-                  <MenuRow onClick={comingNext("Notifications & quiet hours")} icon={<BellIcon className="h-5 w-5" />} title="Notifications & quiet hours" detail="Quiet 22:00–08:00" />
-                  <MenuRow onClick={comingNext("Comfort & accessibility")} icon={<SparkleIcon className="h-5 w-5" />} title="Comfort & accessibility" detail="Reduced motion · text size" />
-                  <MenuRow onClick={comingNext("Account")} icon={<SparkleIcon className="h-5 w-5" />} title="Account" detail="Email, export, sign out" />
+                  <MenuRow href="/me/settings?view=privacy" icon={<CheckIcon className="h-5 w-5" />} title="Privacy & sharing" detail="Private by default" />
+                  <MenuRow href="/me/settings?view=reminders" icon={<BellIcon className="h-5 w-5" />} title="Notifications & quiet hours" detail="Quiet 22:00–08:00" />
+                  <MenuRow href="/me/settings?view=comfort" icon={<SparkleIcon className="h-5 w-5" />} title="Comfort & accessibility" detail="Reduced motion · text size" />
+                  <MenuRow href="/me/settings?view=account" icon={<SparkleIcon className="h-5 w-5" />} title="Account" detail="Email, export, sign out" />
                 </ul>
               </Panel>
               {profile?.squadName ? (

@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { BottomNav, Sidebar, Toast, type BottomNavKey } from "../components";
 import type { NewHabitInput, NewTaskInput } from "../mocks/types";
 import { AchievementOverlay } from "../me/AchievementOverlay";
+import { applyComfort, useComfort } from "../me/comfort";
 import { StageUpOverlay } from "../progress/StageUpOverlay";
 import { QuickCreateSheet, type QuickCreateKind } from "./QuickCreateSheet";
 
@@ -41,6 +42,8 @@ export function AppShell({ active, children, onAddTask, onAddHabit }: AppShellPr
     session: 0,
   });
   const [toast, setToast] = useState<string | null>(null);
+  const comfort = useComfort();
+  useEffect(() => applyComfort(comfort), [comfort]);
 
   const openQuickCreate = useCallback(
     (kind: QuickCreateKind = "task") => setQuickCreate((previous) => ({ open: true, kind, session: previous.session + 1 })),

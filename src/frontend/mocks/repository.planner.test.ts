@@ -174,3 +174,22 @@ describe("achievements and studio", () => {
     expect(sage.room).toBe("sage");
   });
 });
+
+describe("settings and account", () => {
+  it("validates handles and quiet hours", async () => {
+    const { saveProfileDetails, saveQuietHours } = await import("./repository");
+    await expect(saveProfileDetails({ handle: "@zara", intention: "" })).rejects.toThrow();
+    await expect(saveProfileDetails({ handle: "a b", intention: "" })).rejects.toThrow();
+    expect((await saveProfileDetails({ handle: "@Ari_Builds", intention: "x" })).handle).toBe("ari_builds");
+    await expect(saveQuietHours({ enabled: true, from: "22:00", to: "22:00", days: "everyDay", customDays: [] })).rejects.toThrow();
+  });
+
+  it("needs the code, the word and no solo squad to schedule deletion", async () => {
+    const { requestAccountDeletion, previewTransferOwnership } = await import("./repository");
+    await expect(requestAccountDeletion("482913", "DELETE")).rejects.toThrow();
+    await previewTransferOwnership();
+    await expect(requestAccountDeletion("000000", "DELETE")).rejects.toThrow();
+    await expect(requestAccountDeletion("482913", "delete")).rejects.toThrow();
+    expect((await requestAccountDeletion("482913", "DELETE")).deletionScheduledFor).not.toBeNull();
+  });
+});

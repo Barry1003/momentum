@@ -324,3 +324,18 @@ a {
   }
   .splash-ring { display: none; }
 }
+
+/* ------------------------------------------------------------------ */
+/* Comfort & accessibility (Me · Comfort). Set on <html> per device.   */
+/* ------------------------------------------------------------------ */
+html[data-text-size="large"] body { zoom: 1.1; }
+html[data-text-size="extraLarge"] body { zoom: 1.22; }
+html[data-readable-font] body { letter-spacing: 0.02em; word-spacing: 0.08em; line-height: 1.6; }
+html[data-reduce-motion] *,
+html[data-reduce-motion] *::before,
+html[data-reduce-motion] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

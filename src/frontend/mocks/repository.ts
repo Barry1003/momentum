@@ -2,7 +2,7 @@ import { mockAchievements, mockCompanion, mockFocusLobby, mockSquadMoments, mock
 import { MOMENT_XP, addDays, currentRun, isScheduledOn, isoDate } from "./habitRules";
 import { mockGoals } from "./goalsData";
 import { STAGE_EXTRAS, STAGE_THRESHOLDS, nextStageState } from "./progressRules";
-import type { GrowthStage, Achievement, CheckInInput, CompanionOverview, ProfileSummary, StudioOption, StudioState, CheckInStatus, GoalSnapshot, ProgressSummary, SquadProgress, StageUpEvent, CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
+import type { AccountPreview, PrivacySettings, ProfileDetails, QuietHours, ReminderSettings, GrowthStage, Achievement, CheckInInput, CompanionOverview, ProfileSummary, StudioOption, StudioState, CheckInStatus, GoalSnapshot, ProgressSummary, SquadProgress, StageUpEvent, CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
 
 const MOCK_LATENCY_MS = 250;
 const TASK_COMPLETE_XP = 10;
@@ -875,4 +875,142 @@ export async function getProfileSummary(displayName: string): Promise<ProfileSum
     squadMembers: squadMembers.length + 1,
     activeDays: summary.activeDays,
   });
+}
+
+// ---------------------------------------------------------------- settings and account (preview)
+
+let privacy: PrivacySettings = {
+  shareCheckedIn: true,
+  shareFocusStatus: true,
+  shareFinishedSharedTasks: true,
+  shareGrowthStage: true,
+  shareStreaksAndXp: false,
+};
+let reminders: ReminderSettings = {
+  morningPlan: true,
+  morningPlanTime: "08:30",
+  eveningCheckIn: true,
+  eveningCheckInTime: "21:00",
+  habitReminders: true,
+  squadCheers: false,
+  reviewDay: true,
+};
+let quiet: QuietHours = { enabled: true, from: "22:00", to: "08:00", days: "everyDay", customDays: [] };
+let profileDetails: ProfileDetails = { handle: "", intention: "Build things I’m proud of." };
+
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const HANDLE = /^[a-z0-9_]{3,15}$/;
+const TAKEN_HANDLES = new Set(["zara", "malik", "kemi", "dayo", "momentum", "admin"]);
+
+export async function getPrivacy(): Promise<PrivacySettings> {
+  return delay(privacy);
+}
+export async function savePrivacy(next: PrivacySettings): Promise<PrivacySettings> {
+  privacy = {
+    shareCheckedIn: next.shareCheckedIn === true,
+    shareFocusStatus: next.shareFocusStatus === true,
+    shareFinishedSharedTasks: next.shareFinishedSharedTasks === true,
+    shareGrowthStage: next.shareGrowthStage === true,
+    shareStreaksAndXp: next.shareStreaksAndXp === true,
+  };
+  return delay(privacy);
+}
+
+export async function getReminders(): Promise<ReminderSettings> {
+  return delay(reminders);
+}
+export async function saveReminders(next: ReminderSettings): Promise<ReminderSettings> {
+  if (!TIME.test(next.morningPlanTime) || !TIME.test(next.eveningCheckInTime)) throw new Error("Times use HH:MM.");
+  reminders = { ...next };
+  return delay(reminders);
+}
+
+export async function getQuietHours(): Promise<QuietHours> {
+  return delay(quiet);
+}
+export async function saveQuietHours(next: QuietHours): Promise<QuietHours> {
+  if (!TIME.test(next.from) || !TIME.test(next.to)) throw new Error("Times use HH:MM.");
+  if (next.from === next.to) throw new Error("Start and end can’t be the same time.");
+  const customDays = [...new Set(next.customDays.filter((day) => day >= 0 && day <= 6))].sort((a, b) => a - b);
+  if (next.days === "custom" && customDays.length === 0) throw new Error("Pick at least one day.");
+  quiet = { enabled: next.enabled === true, from: next.from, to: next.to, days: next.days, customDays };
+  return delay(quiet);
+}
+
+export async function getProfileDetails(displayName: string): Promise<ProfileDetails> {
+  if (!profileDetails.handle) {
+    profileDetails = { ...profileDetails, handle: displayName.toLowerCase().replace(/[^a-z0-9_]+/g, "").slice(0, 15) || "you" };
+  }
+  return delay(profileDetails);
+}
+
+/** Handles are public and unique; the intention is only ever shown to its owner. */
+export async function saveProfileDetails(next: ProfileDetails): Promise<ProfileDetails> {
+  const handle = next.handle.trim().replace(/^@/, "").toLowerCase();
+  if (!HANDLE.test(handle)) throw new Error("Handles are 3–15 letters, numbers or underscores.");
+  if (TAKEN_HANDLES.has(handle)) throw new Error(`@${handle} is taken. Try another.`);
+  const intention = next.intention.trim().slice(0, 140);
+  profileDetails = { handle, intention };
+  return delay(profileDetails);
+}
+
+let account: AccountPreview = {
+  email: "you@example.com",
+  pendingEmail: null,
+  export: { state: "none", requestedAt: null, fileName: null },
+  ownsSquadAlone: true,
+  squadName: "Northstar",
+  deletionScheduledFor: null,
+};
+const PREVIEW_CODE = "482913";
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+export async function getAccount(): Promise<AccountPreview> {
+  if (account.export.state === "preparing" && account.export.requestedAt && Date.now() - Number(account.export.requestedAt) > 8000) {
+    account = { ...account, export: { ...account.export, state: "ready", fileName: `momentum-${todayIso()}.zip` } };
+  }
+  return delay({ ...account, squadName: squadMembers.length ? planner.squadName : null, ownsSquadAlone: account.ownsSquadAlone && squadMembers.length > 0 });
+}
+
+/** Preview: no email is sent. The real flow sends a code to the new address. */
+export async function requestEmailChange(newEmail: string): Promise<{ previewCode: string }> {
+  const email = newEmail.trim().toLowerCase();
+  if (!EMAIL.test(email) || email.length > 254) throw new Error("That email doesn’t look right.");
+  if (email === account.email) throw new Error("That’s already your email.");
+  account = { ...account, pendingEmail: email };
+  return delay({ previewCode: PREVIEW_CODE });
+}
+
+export async function confirmEmailChange(code: string): Promise<AccountPreview> {
+  if (!account.pendingEmail) throw new Error("Start again: there’s no change waiting.");
+  if (code.trim() !== PREVIEW_CODE) throw new Error("That code doesn’t match. Check the latest email.");
+  account = { ...account, email: account.pendingEmail, pendingEmail: null };
+  return delay(account);
+}
+
+export async function requestDataExport(): Promise<AccountPreview> {
+  if (account.export.state !== "preparing") {
+    account = { ...account, export: { state: "preparing", requestedAt: String(Date.now()), fileName: null } };
+  }
+  return delay(account);
+}
+
+/** Preview: ownership is handed over in Squad settings (02c). Here it just clears the blocker. */
+export async function previewTransferOwnership(): Promise<void> {
+  account = { ...account, ownsSquadAlone: false };
+  return delay(undefined);
+}
+
+/** Preview only: nothing is deleted. The real flow schedules deletion for 14 days later. */
+export async function requestAccountDeletion(code: string, confirmWord: string): Promise<AccountPreview> {
+  if (account.ownsSquadAlone && squadMembers.length > 0) throw new Error("Pass your squad on first.");
+  if (code.trim() !== PREVIEW_CODE) throw new Error("That code doesn’t match.");
+  if (confirmWord.trim() !== "DELETE") throw new Error("Type DELETE in capitals to confirm.");
+  account = { ...account, deletionScheduledFor: addDays(todayIso(), 14) };
+  return delay(account);
+}
+
+export async function cancelAccountDeletion(): Promise<AccountPreview> {
+  account = { ...account, deletionScheduledFor: null };
+  return delay(account);
 }
