@@ -22,7 +22,7 @@ export interface CompanionRendererProps {
   onReactionEnd?: () => void;
 }
 
-const STAGE_ART: Record<GrowthStage, { full: typeof ariChild; face: typeof ariChildFace }> = {
+export const STAGE_ART: Record<GrowthStage, { full: typeof ariChild; face: typeof ariChildFace }> = {
   child: { full: ariChild, face: ariChildFace },
   preteen: { full: ariPreteen, face: ariPreteenFace },
   teen: { full: ariTeen, face: ariTeenFace },

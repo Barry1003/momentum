@@ -1,5 +1,5 @@
-import { mockCompanion, mockHabits, mockNotifications, mockPlanner, mockSquadMembers, mockTasks } from "./data";
-import type { CompanionState, Habit, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
+import { mockCompanion, mockFocusLobby, mockHabits, mockNotifications, mockPlanner, mockSquadMembers, mockTasks, mockWeekFocusedMinutes } from "./data";
+import type { CompanionState, FocusLobby, Habit, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
 
 const MOCK_LATENCY_MS = 250;
 const TASK_COMPLETE_XP = 10;
@@ -14,6 +14,8 @@ let habits: Habit[] = mockHabits.map((habit) => ({ ...habit }));
 const squadMembers = mockSquadMembers.map((member) => ({ ...member }));
 let notifications: NotificationItem[] = mockNotifications.map((item) => ({ ...item }));
 let planner: PlannerData = structuredClone(mockPlanner);
+let weekFocusedMinutes = mockWeekFocusedMinutes;
+const savedFocusSessions = new Set<string>();
 let nextId = 100;
 
 function delay<T>(value: T): Promise<T> {
@@ -167,4 +169,35 @@ export async function getNotifications(): Promise<NotificationItem[]> {
 export async function markAllNotificationsRead(): Promise<NotificationItem[]> {
   notifications = notifications.map((item) => ({ ...item, isRead: true }));
   return delay(notifications);
+}
+
+/** Server rule (mock): one XP for every started five minutes of real focus, none under a minute. */
+function focusXpFor(focusedSeconds: number): number {
+  if (focusedSeconds < 60) return 0;
+  return Math.ceil(focusedSeconds / 60 / 5);
+}
+
+/** What saving this much focus would earn, for the finish-early question. Server-side rule. */
+export async function quoteFocusXp(focusedSeconds: number): Promise<number> {
+  return delay(focusXpFor(Math.max(0, Math.floor(focusedSeconds))));
+}
+
+export async function getFocusLobby(): Promise<FocusLobby> {
+  return delay(mockFocusLobby);
+}
+
+/**
+ * Save a finished or stopped session. `sessionKey` makes retries safe: saving
+ * the same session twice (e.g. after a timeout or an offline retry) awards XP once.
+ */
+export async function saveFocusSession(sessionKey: string, input: SaveFocusInput): Promise<SaveFocusResult> {
+  const focusedSeconds = Math.max(0, Math.min(Math.floor(input.focusedSeconds), input.plannedMinutes * 60));
+  if (savedFocusSessions.has(sessionKey)) {
+    return delay({ focusedSeconds, xpAwarded: 0, weekFocusedMinutes, companion });
+  }
+  savedFocusSessions.add(sessionKey);
+  const xpAwarded = focusXpFor(focusedSeconds);
+  weekFocusedMinutes += Math.round(focusedSeconds / 60);
+  const nextCompanion = awardXp(xpAwarded);
+  return delay({ focusedSeconds, xpAwarded, weekFocusedMinutes, companion: nextCompanion });
 }

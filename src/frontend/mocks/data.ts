@@ -1,4 +1,4 @@
-import type { CompanionState, Habit, NotificationItem, PlannerData, SquadMember, Task } from "./types";
+import type { CompanionState, FocusLobby, Habit, NotificationItem, PlannerData, SquadMember, Task } from "./types";
 
 export const mockCompanion: CompanionState = {
   stage: "teen",
@@ -83,3 +83,17 @@ export const mockPlanner: PlannerData = {
   ],
   squadName: "Northstar",
 };
+
+export const mockFocusLobby: FocusLobby = {
+  squadName: "Northstar",
+  lengthMinutes: 25,
+  startsInSeconds: 45,
+  members: [
+    { id: "lobby-1", name: "Zara", status: "ready", note: "Portfolio case study" },
+    { id: "lobby-2", name: "Malik", status: "ready", note: "Math set 4" },
+    { id: "lobby-3", name: "Kemi", status: "waiting", note: "Invited" },
+  ],
+};
+
+/** Focused minutes already logged this week before today's sessions. */
+export const mockWeekFocusedMinutes = 165;

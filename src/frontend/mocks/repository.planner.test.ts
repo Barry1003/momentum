@@ -38,3 +38,17 @@ describe("planner mock repository", () => {
     expect((await getToday()).tasks.some((item) => item.id === task?.id)).toBe(true);
   });
 });
+
+describe("focus sessions", () => {
+  it("awards focus XP once per session, on the server side", async () => {
+    const { quoteFocusXp, saveFocusSession } = await import("./repository");
+    expect(await quoteFocusXp(14 * 60 + 8)).toBe(3);
+    expect(await quoteFocusXp(30)).toBe(0);
+    const first = await saveFocusSession("s-1", { taskId: null, focusedSeconds: 1500, plannedMinutes: 25, mode: "solo" });
+    expect(first.xpAwarded).toBe(5);
+    const retry = await saveFocusSession("s-1", { taskId: null, focusedSeconds: 1500, plannedMinutes: 25, mode: "solo" });
+    expect(retry.xpAwarded).toBe(0);
+    const capped = await saveFocusSession("s-2", { taskId: null, focusedSeconds: 99_999, plannedMinutes: 25, mode: "solo" });
+    expect(capped.focusedSeconds).toBe(1500);
+  });
+});

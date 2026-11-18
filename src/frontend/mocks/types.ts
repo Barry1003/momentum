@@ -146,3 +146,32 @@ export interface SquadData {
   hasSquad: boolean;
   members: SquadMember[];
 }
+
+export interface FocusLobbyMember {
+  id: string;
+  name: string;
+  status: "ready" | "waiting";
+  note: string;
+}
+
+export interface FocusLobby {
+  squadName: string;
+  lengthMinutes: number;
+  startsInSeconds: number;
+  members: FocusLobbyMember[];
+}
+
+export interface SaveFocusInput {
+  taskId: string | null;
+  focusedSeconds: number;
+  plannedMinutes: number;
+  mode: "solo" | "squad";
+  stopReason?: string | null;
+}
+
+export interface SaveFocusResult {
+  focusedSeconds: number;
+  xpAwarded: number;
+  weekFocusedMinutes: number;
+  companion: CompanionState;
+}

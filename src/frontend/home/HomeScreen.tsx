@@ -110,7 +110,7 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
   const heroMessage =
     remaining === 0 ? "All done today. I'm proud of you." : remaining <= 2 ? `${remaining === 1 ? "One more" : "Two more"} and today is done. I'm with you.` : "One thing at a time. I'm with you.";
 
-  const startFocus = () => showToast("Focus sessions arrive with the Focus screen.");
+  const startFocus = () => router.push(nextTask ? `/focus?task=${encodeURIComponent(nextTask.id)}` : "/focus");
 
   const title =
     tab === "squad"

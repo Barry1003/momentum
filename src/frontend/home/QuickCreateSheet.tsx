@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Button, Sheet } from "../components";
 import { cn } from "../lib/cn";
@@ -56,6 +57,7 @@ function ToggleChip({ label, pressed, onToggle }: { label: string; pressed: bool
 
 /** Quick create (+): add a task, habit, goal or start focus from anywhere. Figma 02 · Home, step 04. */
 export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddHabit, onNotice }: QuickCreateSheetProps) {
+  const router = useRouter();
   const [kind, setKind] = useState<QuickCreateKind>(initialKind);
   const [title, setTitle] = useState("");
   const [isToday, setIsToday] = useState(true);
@@ -87,7 +89,7 @@ export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddH
       } else if (kind === "goal") {
         onNotice("Goals arrive with the Plan screens. Nothing was saved yet.");
       } else {
-        onNotice("Focus sessions arrive with the Focus screens.");
+        router.push("/focus");
       }
       onClose();
     } finally {
