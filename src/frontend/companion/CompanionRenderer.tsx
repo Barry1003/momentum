@@ -33,44 +33,76 @@ const STAGE_ART: Record<GrowthStage, { full: typeof ariChild; face: typeof ariCh
 // touching any screen that renders <Companion />.
 const SUPPORTED_OUTFITS: CompanionLook["outfit"][] = ["original"];
 
-const REACTION_ANIMATION_CLASS: Record<CompanionReaction, string> = {
-  idle: "animate-companion-breathe",
-  quietDay: "animate-companion-breathe",
-  hello: "animate-companion-bounce-sm",
-  taskDone: "animate-companion-bounce-sm",
-  milestone: "animate-companion-bounce-lg",
+/**
+ * Temporary reaction → motion. The growth stage (permanent) only chooses the
+ * art; reactions only choose motion. Keep these two concerns separate.
+ */
+const REACTION_MOTION: Record<CompanionReaction, string> = {
+  idle: "animate-companion-idle",
+  quietDay: "animate-companion-idle",
+  hello: "animate-companion-hello",
+  taskDone: "animate-companion-hello",
+  milestone: "animate-companion-celebrate",
   focus: "",
 };
 
 const ONE_SHOT_REACTIONS: ReadonlySet<CompanionReaction> = new Set(["hello", "taskDone", "milestone"]);
 
-const SIZE_CLASS: Record<CompanionSize, string> = {
+const IMAGE_CLASS: Record<Exclude<CompanionSize, "face">, string> = {
   hero: "h-[220px] w-auto",
   card: "h-[120px] w-auto",
-  face: "h-12 w-12 rounded-full object-cover",
+  // Tall image inside a short clipping box: only head and shoulders show.
+  bust: "h-[500px] w-auto max-w-none",
 };
 
 /**
  * Static-PNG companion art, cropped from the Figma source sheet
- * (page "02 — Character Source Art", node 1:2). Swap this renderer for a
- * future Rive/Live2D one by changing the export in companion/index.ts.
+ * (page "02 — Character Source Art"), brought to life with motion:
+ * breathing + sway when idle, a hop-and-tilt "hello", a celebration jump,
+ * and a ground shadow that breathes with the body.
+ *
+ * Real blinking, smiling and an arm wave need new layered art frames
+ * (or a Rive/Live2D rig). When those exist, swap the renderer in
+ * activeRenderer.ts — no screen needs to change.
  */
 export function PngCompanionRenderer({ stage, reaction, look, size, reduceMotion, onReactionEnd }: CompanionRendererProps) {
   const outfit = SUPPORTED_OUTFITS.includes(look.outfit) ? look.outfit : "original";
   void outfit; // only one outfit exists today; kept for the future art swap
 
   const art = STAGE_ART[stage];
-  const image = size === "face" ? art.face : art.full;
-  const animationClass = reduceMotion ? "" : REACTION_ANIMATION_CLASS[reaction];
+
+  if (size === "face") {
+    return <Image src={art.face} alt="" draggable={false} className="h-12 w-12 select-none rounded-full object-cover" />;
+  }
+
+  const motionClass = reduceMotion ? "" : REACTION_MOTION[reaction];
   const isOneShot = ONE_SHOT_REACTIONS.has(reaction);
+  const handleAnimationEnd = !reduceMotion && isOneShot ? onReactionEnd : undefined;
 
   return (
-    <Image
-      src={image}
-      alt=""
-      className={cn("select-none", SIZE_CLASS[size], animationClass)}
-      onAnimationEnd={!reduceMotion && isOneShot ? onReactionEnd : undefined}
-      priority={size === "hero"}
-    />
+    <span
+      className={cn(
+        "relative inline-flex flex-col items-center",
+        size === "bust" ? "h-[190px] items-start overflow-hidden" : "",
+      )}
+    >
+      <span
+        className={cn("companion-body", motionClass)}
+        onAnimationEnd={(event) => {
+          if (event.target === event.currentTarget) handleAnimationEnd?.();
+        }}
+      >
+        <Image
+          src={art.full}
+          alt=""
+          draggable={false}
+          className={cn("select-none", IMAGE_CLASS[size])}
+          priority={size !== "card"}
+        />
+      </span>
+      {size === "bust" ? null : (
+        <span aria-hidden className={cn("companion-shadow", reduceMotion ? "" : "animate-companion-shadow")} />
+      )}
+    </span>
   );
 }

@@ -11,4 +11,5 @@ export interface CompanionLook {
   outfit: CompanionOutfit;
 }
 
-export type CompanionSize = "hero" | "card" | "face";
+/** `bust` shows head and shoulders only, for "peeking over a card" layouts. */
+export type CompanionSize = "hero" | "card" | "bust" | "face";
