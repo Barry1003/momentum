@@ -1,0 +1,38 @@
+name: Neon managed auth lockfile bootstrap (temporary)
+
+on:
+  push:
+    branches: [feature/neon-managed-auth]
+    paths: ['.github/workflows/neon-auth-bootstrap.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and lock dependencies
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm db:validate
+          pnpm db:generate
+      - name: Commit verified lockfile and remove bootstrap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/neon-auth-bootstrap.yml
+          git add pnpm-lock.yaml
+          git commit -m "chore(auth): lock managed Neon SDK and remove bootstrap"
+          git fetch origin feature/neon-managed-auth
+          git rebase origin/feature/neon-managed-auth
+          git push origin HEAD:feature/neon-managed-auth
