@@ -2,7 +2,7 @@
   "name": "momentum-app",
   "version": "0.1.0",
   "private": true,
-  "description": "Momentum \u2014 small-group accountability and personal growth PWA",
+  "description": "Momentum — small-group accountability and personal growth PWA",
   "engines": {
     "node": ">=22.12.0"
   },
@@ -30,12 +30,16 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.12",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "dotenv": "^16.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.4.0",
+    "jsdom": "^31.0.1",
     "prisma": "^7.0.0",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.0.0",
