@@ -1,5 +1,5 @@
-import { mockCompanion, mockHabits, mockSquadMembers, mockTasks } from "./data";
-import type { CompanionState, Habit, HabitsData, SquadData, Task, TodayData } from "./types";
+import { mockCompanion, mockHabits, mockNotifications, mockSquadMembers, mockTasks } from "./data";
+import type { CompanionState, Habit, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, SquadData, Task, TodayData } from "./types";
 
 const MOCK_LATENCY_MS = 250;
 const TASK_COMPLETE_XP = 10;
@@ -12,6 +12,8 @@ let companion: CompanionState = { ...mockCompanion };
 let tasks: Task[] = mockTasks.map((task) => ({ ...task }));
 let habits: Habit[] = mockHabits.map((habit) => ({ ...habit }));
 const squadMembers = mockSquadMembers.map((member) => ({ ...member }));
+let notifications: NotificationItem[] = mockNotifications.map((item) => ({ ...item }));
+let nextId = 100;
 
 function delay<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), MOCK_LATENCY_MS));
@@ -58,4 +60,39 @@ export async function incrementHabit(habitId: string): Promise<{ habit: Habit; c
 
 export async function getSquad(): Promise<SquadData> {
   return delay({ hasSquad: squadMembers.length > 0, members: squadMembers });
+}
+
+export async function addTask(input: NewTaskInput): Promise<{ task: Task }> {
+  const task: Task = {
+    id: `task-${nextId++}`,
+    title: input.title.trim(),
+    isDone: false,
+    isShared: false,
+    durationMinutes: input.durationMinutes,
+    category: input.category,
+  };
+  tasks = [...tasks, task];
+  return delay({ task });
+}
+
+export async function addHabit(input: NewHabitInput): Promise<{ habit: Habit }> {
+  const habit: Habit = {
+    id: `habit-${nextId++}`,
+    name: input.name.trim(),
+    targetCount: Math.max(1, input.targetCount),
+    completedCount: 0,
+    isScheduledToday: true,
+    icon: "sparkle",
+  };
+  habits = [...habits, habit];
+  return delay({ habit });
+}
+
+export async function getNotifications(): Promise<NotificationItem[]> {
+  return delay(notifications);
+}
+
+export async function markAllNotificationsRead(): Promise<NotificationItem[]> {
+  notifications = notifications.map((item) => ({ ...item, isRead: true }));
+  return delay(notifications);
 }

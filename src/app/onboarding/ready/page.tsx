@@ -32,7 +32,7 @@ export default function OnboardingReadyPage() {
     } catch {
       // Storage can be unavailable in a private or restricted browser.
     }
-    router.push(data.path === "squad" ? "/home" : "/my-space");
+    router.push(data.path === "squad" ? "/home?tab=squad" : "/home");
   }
 
   return (

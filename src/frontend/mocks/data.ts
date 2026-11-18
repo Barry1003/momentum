@@ -1,21 +1,21 @@
-import type { CompanionState, Habit, SquadMember, Task } from "./types";
+import type { CompanionState, Habit, NotificationItem, SquadMember, Task } from "./types";
 
 export const mockCompanion: CompanionState = {
   stage: "teen",
-  xp: 420,
-  xpToNextStage: 600,
+  xp: 1260,
+  xpToNextStage: 1600,
 };
 
 export const mockTasks: Task[] = [
-  { id: "task-1", title: "Stretch for 5 minutes", isDone: false, time: "8:00 AM", isShared: false },
-  { id: "task-2", title: "Reply to Zara's message", isDone: false, time: "11:00 AM", isShared: true, sharedByName: "Zara" },
-  { id: "task-3", title: "Plan tomorrow's focus block", isDone: true, time: "2:00 PM", isShared: false },
+  { id: "task-1", title: "Review JS closures", isDone: false, durationMinutes: 25, category: "Development", isShared: false },
+  { id: "task-2", title: "Read 10 pages", isDone: true, durationMinutes: 20, category: "Reading", isShared: false },
+  { id: "task-3", title: "Walk for 20 minutes", isDone: false, durationMinutes: 20, category: "Wellness", isShared: true, sharedByName: "Northstar" },
 ];
 
 export const mockHabits: Habit[] = [
-  { id: "habit-1", name: "Drink water", targetCount: 8, completedCount: 3, isScheduledToday: true },
-  { id: "habit-2", name: "Evening walk", targetCount: 1, completedCount: 0, isScheduledToday: true },
-  { id: "habit-3", name: "Read", targetCount: 1, completedCount: 1, isScheduledToday: false },
+  { id: "habit-1", name: "Drink water", targetCount: 8, completedCount: 2, isScheduledToday: true, icon: "water", unit: "glasses" },
+  { id: "habit-2", name: "Move daily", targetCount: 1, completedCount: 0, isScheduledToday: true, icon: "move" },
+  { id: "habit-3", name: "Read", targetCount: 1, completedCount: 1, isScheduledToday: true, icon: "read" },
 ];
 
 export const mockSquadMembers: SquadMember[] = [
@@ -23,4 +23,12 @@ export const mockSquadMembers: SquadMember[] = [
   { id: "member-2", name: "Malik", avatarInitial: "M", isCheckedInToday: false, isFocusing: true, stage: "youngAdult" },
   { id: "member-3", name: "Kemi", avatarInitial: "K", isCheckedInToday: true, isFocusing: false, stage: "teen" },
   { id: "member-4", name: "Dayo", avatarInitial: "D", isCheckedInToday: false, isFocusing: false, stage: "preteen" },
+];
+
+export const mockNotifications: NotificationItem[] = [
+  { id: "n-1", kind: "cheer", fromName: "Zara", title: "Zara sent you a high five", body: "“For finishing your reading streak!”", when: "2m", group: "today", isRead: false },
+  { id: "n-2", kind: "growth", title: "Ari is 340 XP from Young Adult", body: "Two more tasks today gets you closer.", when: "1h", group: "today", isRead: false },
+  { id: "n-3", kind: "squad", fromName: "Malik", title: "Malik joined “30 focus hours”", body: "Northstar is at 60% together.", when: "3h", group: "today", isRead: false },
+  { id: "n-4", kind: "review", title: "Your 15-day check-in opens soon", body: "2 December · three short questions", when: "Mon", group: "earlier", isRead: true },
+  { id: "n-5", kind: "squad", fromName: "Kemi", title: "Kemi finished “Read chapter 3”", body: "A shared task in Northstar", when: "Sun", group: "earlier", isRead: true },
 ];
