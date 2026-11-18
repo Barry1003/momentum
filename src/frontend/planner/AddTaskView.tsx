@@ -57,14 +57,6 @@ const PRIORITIES: { value: TaskPriority; label: string }[] = [
   { value: "low", label: "Low" },
 ];
 
-type GoalChoice = "developer" | "wellbeing" | "squad" | "none";
-const GOALS: { value: GoalChoice; label: string; goalName?: string; category?: string }[] = [
-  { value: "developer", label: "Become a confident developer", goalName: "Confident developer", category: "Development" },
-  { value: "wellbeing", label: "Wellbeing", goalName: "Wellbeing", category: "Wellness" },
-  { value: "squad", label: "Northstar · shared", goalName: "Build our launch together" },
-  { value: "none", label: "None" },
-];
-
 const REPEATS: { value: TaskRepeat; label: string }[] = [
   { value: "never", label: "Never" },
   { value: "daily", label: "Daily" },
@@ -76,19 +68,21 @@ type Visibility = "private" | "squad";
 
 export interface AddTaskViewProps {
   squadName: string;
+  goals: PlannerGoal[];
   onAdd: (input: NewTaskInput) => Promise<void>;
   onCancel: () => void;
 }
 
 /** Figma 03 · Planner · Add a task (details). Private by default. */
-export function AddTaskView({ squadName, onAdd, onCancel }: AddTaskViewProps) {
+export function AddTaskView({ squadName, goals, onAdd, onCancel }: AddTaskViewProps) {
   const [title, setTitle] = useState("");
   const [when, setWhen] = useState<TaskWhen>("today");
   const [duration, setDuration] = useState<Duration>("25");
   const [customMinutes, setCustomMinutes] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
-  const [goal, setGoal] = useState<GoalChoice>("developer");
+  const [goal, setGoal] = useState<string>("none");
   const [repeats, setRepeats] = useState<TaskRepeat>("never");
+  const [selectedDate, setSelectedDate] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("private");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -110,7 +104,10 @@ export function AddTaskView({ squadName, onAdd, onCancel }: AddTaskViewProps) {
     } else {
       minutes = Number(duration);
     }
-    const chosenGoal = GOALS.find((item) => item.value === goal);
+    const chosenGoal = goals.find((item) => item.id === goal);
+    if (when === "pickDate" && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(selectedDate) || Number.isNaN(Date.parse(selectedDate)))) {
+      setError("Choose a valid date."); return;
+    }
     setIsSaving(true);
     try {
       await onAdd({
@@ -118,11 +115,14 @@ export function AddTaskView({ squadName, onAdd, onCancel }: AddTaskViewProps) {
         when,
         durationMinutes: minutes,
         priority,
-        goalName: chosenGoal?.goalName,
-        category: chosenGoal?.category,
+        goalId: chosenGoal?.id,
+        goalName: chosenGoal?.title,
+        selectedDate: when === "pickDate" ? selectedDate : undefined,
         repeats,
         shareWithSquad: visibility === "squad",
       });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to add the task.");
     } finally {
       setIsSaving(false);
     }
@@ -151,6 +151,7 @@ export function AddTaskView({ squadName, onAdd, onCancel }: AddTaskViewProps) {
         </p>
       ) : null}
       <Choice legend="When" options={WHEN} value={when} onChange={setWhen} />
+      {when === "pickDate" ? <input aria-label="Task date" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} className="rounded-input bg-surface px-4 py-3 text-text shadow-inset" /> : null}
       <Choice legend="How long" options={DURATIONS} value={duration} onChange={setDuration} />
       {duration === "custom" ? (
         <label className="-mt-2 flex items-center gap-2 font-heading text-label text-text-muted">
@@ -173,7 +174,7 @@ export function AddTaskView({ squadName, onAdd, onCancel }: AddTaskViewProps) {
   const right: ReactNode = (
     <div className={sectionGap}>
       <Choice legend="Priority" options={PRIORITIES} value={priority} onChange={setPriority} />
-      <Choice legend="Goal" options={GOALS.map(({ value, label }) => ({ value, label: value === "squad" ? `${squadName} · shared` : label }))} value={goal} onChange={setGoal} />
+      <Choice legend="Goal" options={[{ value: "none", label: "No goal" }, ...goals.map((item) => ({ value: item.id, label: item.title }))]} value={goal} onChange={setGoal} />
       <Choice legend="Repeats" options={REPEATS} value={repeats} onChange={setRepeats} />
       <div>
         <Choice
