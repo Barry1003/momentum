@@ -1,7 +1,8 @@
-import { mockCompanion, mockFocusLobby, mockHabits, mockNotifications, mockPlanner, mockSquadMembers, mockTasks, mockWeekFocusedMinutes } from "./data";
+import { mockAchievements, mockCompanion, mockFocusLobby, mockSquadMoments, mockHabits, mockNotifications, mockPlanner, mockSquadMembers, mockTasks, mockWeekFocusedMinutes } from "./data";
 import { MOMENT_XP, addDays, currentRun, isScheduledOn, isoDate } from "./habitRules";
 import { mockGoals } from "./goalsData";
-import type { CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
+import { STAGE_EXTRAS, nextStageState } from "./progressRules";
+import type { Achievement, CheckInInput, CheckInStatus, GoalSnapshot, ProgressSummary, SquadProgress, StageUpEvent, CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
 
 const MOCK_LATENCY_MS = 250;
 const TASK_COMPLETE_XP = 10;
@@ -67,6 +68,7 @@ let goals: GoalDetail[] = structuredClone(mockGoals);
 const MILESTONE_XP = 60;
 const GOAL_XP = 200;
 let weekFocusedMinutes = mockWeekFocusedMinutes;
+let todayFocusMinutes = 0;
 const savedFocusSessions = new Set<string>();
 let nextId = 100;
 
@@ -74,9 +76,32 @@ function delay<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), MOCK_LATENCY_MS));
 }
 
+const JOURNEY_STARTED = "2026-10-11";
+let pendingStageUp: StageUpEvent | null = null;
+
+/**
+ * The only place XP changes. Stages follow XP forward and never back, and
+ * crossing into a new stage leaves a "stage up" for the app to celebrate.
+ */
 function awardXp(amount: number): CompanionState {
-  companion = { ...companion, xp: companion.xp + amount };
+  const xp = Math.max(0, companion.xp + amount);
+  const { stage, xpToNextStage } = nextStageState(companion.stage, xp);
+  if (stage !== companion.stage) {
+    const days = Math.max(1, Math.round((Date.now() - new Date(`${JOURNEY_STARTED}T00:00:00`).getTime()) / 86_400_000));
+    pendingStageUp = { stage, xp, days, extra: STAGE_EXTRAS[stage] };
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("momentum:stage-up"));
+  }
+  companion = { ...companion, xp, stage, xpToNextStage };
   return companion;
+}
+
+export async function getPendingStageUp(): Promise<StageUpEvent | null> {
+  return delay(pendingStageUp);
+}
+
+export async function acknowledgeStageUp(): Promise<void> {
+  pendingStageUp = null;
+  return delay(undefined);
 }
 
 export async function getToday(): Promise<TodayData> {
@@ -492,6 +517,179 @@ export async function saveFocusSession(sessionKey: string, input: SaveFocusInput
   savedFocusSessions.add(sessionKey);
   const xpAwarded = focusXpFor(focusedSeconds);
   weekFocusedMinutes += Math.round(focusedSeconds / 60);
+  todayFocusMinutes += Math.round(focusedSeconds / 60);
   const nextCompanion = awardXp(xpAwarded);
   return delay({ focusedSeconds, xpAwarded, weekFocusedMinutes, companion: nextCompanion });
+}
+
+// ---------------------------------------------------------------- progress
+
+/** Believable focus minutes and finished tasks for past days; today comes from live data. */
+const focusLog: Record<string, number> = {};
+const tasksLog: Record<string, number> = {};
+(function seedProgress() {
+  const today = isoDate(new Date());
+  const focusPattern = [42, 64, 18, 0, 72, 80, 38];
+  const taskPattern = [2, 3, 1, 0, 3, 2, 1];
+  for (let back = 1; back <= 90; back += 1) {
+    const iso = addDays(today, -back);
+    const weekday = (new Date(`${iso}T12:00:00`).getDay() + 6) % 7;
+    const wobble = (back * 7) % 5;
+    focusLog[iso] = back % 9 === 0 ? 0 : focusPattern[weekday] + wobble * 3;
+    tasksLog[iso] = back % 9 === 0 ? 0 : taskPattern[weekday] + (wobble > 3 ? 1 : 0);
+  }
+})();
+
+function focusOn(iso: string): number {
+  const extra = iso === todayIso() ? todayFocusMinutes : 0;
+  return (focusLog[iso] ?? 0) + extra;
+}
+
+function tasksOn(iso: string): number {
+  if (iso === todayIso()) return tasks.filter((task) => task.isDone).length;
+  return tasksLog[iso] ?? 0;
+}
+
+function habitMetOn(habit: Habit, iso: string): boolean {
+  return (habitHistory[habit.id]?.[iso] ?? 0) >= habit.targetCount;
+}
+
+function datesBetween(from: string, to: string): string[] {
+  const dates: string[] = [];
+  for (let iso = from; iso <= to && dates.length < 366; iso = addDays(iso, 1)) dates.push(iso);
+  return dates;
+}
+
+function summarise(from: string, to: string): Omit<ProgressSummary, "focusDeltaMinutes" | "bestWeek"> {
+  const dates = datesBetween(from, to);
+  const live = habits.filter((habit) => !habit.archived);
+  const habitRows = live.map((habit) => {
+    const scheduledDays = dates.filter((iso) => isScheduledOn(rules(habit), iso));
+    return { id: habit.id, name: habit.name, icon: habit.icon, met: scheduledDays.filter((iso) => habitMetOn(habit, iso)).length, scheduled: scheduledDays.length };
+  });
+  const scheduled = habitRows.reduce((sum, row) => sum + row.scheduled, 0);
+  const met = habitRows.reduce((sum, row) => sum + row.met, 0);
+  const activeDays = dates.filter((iso) => focusOn(iso) > 0 || tasksOn(iso) > 0 || live.some((habit) => (habitHistory[habit.id]?.[iso] ?? 0) > 0)).length;
+  const focusMinutes = dates.reduce((sum, iso) => sum + focusOn(iso), 0);
+  const tasksDone = dates.reduce((sum, iso) => sum + tasksOn(iso), 0);
+  const share = Math.min(1, dates.length / 60);
+  return {
+    from,
+    to,
+    activeDays,
+    focusMinutes,
+    tasksDone,
+    habitsKeptPercent: scheduled ? Math.round((met / scheduled) * 100) : 0,
+    focusByDay: dates.slice(-7).map((iso) => ({ iso, minutes: focusOn(iso) })),
+    habits: habitRows,
+    byGoal: goals
+      .filter((goal) => !goal.isShared)
+      .map((goal) => ({
+        id: goal.id,
+        title: goal.title,
+        tasksDone: goal.isPaused ? 0 : Math.round(goal.doneCount * share),
+        focusMinutes: goal.isPaused ? 0 : Math.round(goal.focusHours * 60 * share),
+        isPaused: goal.isPaused,
+      })),
+  };
+}
+
+/** Totals for any range up to today. Nothing in the future is ever counted. */
+export async function getProgress(fromIso: string, toIso: string): Promise<ProgressSummary> {
+  const today = todayIso();
+  const valid = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+  let to = valid(toIso) ? toIso : today;
+  let from = valid(fromIso) ? fromIso : to;
+  if (from > to) [from, to] = [to, from];
+  if (to > today) to = today;
+  if (from > to) from = to;
+  if (datesBetween(from, to).length >= 366) from = addDays(to, -365);
+  const current = summarise(from, to);
+  const length = datesBetween(from, to).length;
+  const before = summarise(addDays(from, -length), addDays(from, -1));
+
+  let bestWeek: ProgressSummary["bestWeek"] = null;
+  for (let start = from; start <= to; start = addDays(start, 7)) {
+    const end = addDays(start, 6) > to ? to : addDays(start, 6);
+    const week = summarise(start, end);
+    if (!bestWeek || week.activeDays > bestWeek.activeDays) bestWeek = { from: start, to: end, activeDays: week.activeDays };
+  }
+  return delay({ ...current, focusDeltaMinutes: current.focusMinutes - before.focusMinutes, bestWeek: length >= 14 ? bestWeek : null });
+}
+
+export async function getAchievements(): Promise<Achievement[]> {
+  return delay(mockAchievements);
+}
+
+export async function getGoalSnapshot(goalId: string): Promise<GoalSnapshot | null> {
+  const goal = goals.find((item) => item.id === goalId);
+  if (!goal) return delay(null);
+  return delay({
+    id: goal.id,
+    title: goal.title,
+    startedOn: goal.startedOn,
+    isShared: goal.isShared,
+    doneCount: goal.doneCount,
+    totalCount: goal.totalCount,
+    focusHours: goal.focusHours,
+    areasActive: goal.milestones.filter((milestone) => milestone.status !== "later").length,
+    reviews: goal.isShared ? 0 : 2,
+    recent: goal.tasks
+      .filter((task) => !task.isPrivate)
+      .slice(-3)
+      .reverse()
+      .map((task) => ({ id: task.id, title: task.title, detail: task.isDone ? task.detail : `${task.detail} · not yet`, isDone: task.isDone })),
+  });
+}
+
+const cheered = new Set<string>();
+
+/** Squad totals: only what each person chose to share, never a ranking. */
+export async function getSquadProgress(): Promise<SquadProgress> {
+  const shared = goals.find((goal) => goal.isShared) ?? null;
+  const youCheckedIn = Boolean(checkIns[todayIso()]?.shareCheckedIn);
+  const moments = mockSquadMoments.map((moment) => ({ ...moment, canCheer: !cheered.has(moment.id) }));
+  if (companion.stage === "youngAdult" || companion.stage === "adult") {
+    moments.push({ id: "sm-you", name: "You", text: companion.stage === "adult" ? "Ari became an Adult" : "Ari became a Young Adult", when: "Recently", canCheer: false });
+  }
+  return delay({
+    hasSquad: squadMembers.length > 0,
+    squadName: planner.squadName,
+    focusedHours: 21,
+    tasksDone: 38,
+    checkedIn: squadMembers.filter((member) => member.isCheckedInToday).length + (youCheckedIn ? 1 : 0),
+    members: squadMembers.length + 1,
+    sharedGoal: shared ? { id: shared.id, title: shared.title, doneCount: shared.doneCount, totalCount: shared.totalCount } : null,
+    moments,
+  });
+}
+
+export async function cheerMoment(momentId: string): Promise<void> {
+  cheered.add(momentId);
+  return delay(undefined);
+}
+
+// ---------------------------------------------------------------- check-in
+
+const CHECK_IN_XP = 10;
+const checkIns: Record<string, CheckInInput> = {};
+
+export async function getCheckInStatus(): Promise<CheckInStatus> {
+  return delay({ doneToday: Boolean(checkIns[todayIso()]), xpForCheckIn: checkIns[todayIso()] ? 0 : CHECK_IN_XP });
+}
+
+/** One check-in a day earns XP; saving again updates the words but earns nothing more. */
+export async function saveCheckIn(input: CheckInInput): Promise<{ xpAwarded: number; companion: CompanionState }> {
+  const today = todayIso();
+  const clean: CheckInInput = {
+    mood: input.mood,
+    effort: input.effort,
+    win: input.win.trim().slice(0, 500),
+    obstacle: input.obstacle.trim().slice(0, 500),
+    shareCheckedIn: input.shareCheckedIn === true,
+  };
+  const first = !checkIns[today];
+  checkIns[today] = clean;
+  const next = first ? awardXp(CHECK_IN_XP) : companion;
+  return delay({ xpAwarded: first ? CHECK_IN_XP : 0, companion: next });
 }

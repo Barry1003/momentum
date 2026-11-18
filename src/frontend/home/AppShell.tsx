@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { BottomNav, Sidebar, Toast, type BottomNavKey } from "../components";
 import type { NewHabitInput, NewTaskInput } from "../mocks/types";
+import { StageUpOverlay } from "../progress/StageUpOverlay";
 import { QuickCreateSheet, type QuickCreateKind } from "./QuickCreateSheet";
 
 const NAV_HREFS = { home: "/home", plan: "/planner", progress: "/progress", me: "/my-space" } as const;
@@ -74,6 +75,7 @@ export function AppShell({ active, children, onAddTask, onAddHabit }: AppShellPr
           setToast(`New habit: ${input.name}`);
         }}
       />
+      <StageUpOverlay onShare={() => setToast("Your squad will see that Ari grew up.")} />
       {toast ? <Toast message={toast} onDismiss={dismissToast} /> : null}
     </ShellContext.Provider>
   );

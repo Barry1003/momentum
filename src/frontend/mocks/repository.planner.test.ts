@@ -122,3 +122,37 @@ describe("goals", () => {
     expect(next.tasks[0].todayTaskId).toBeDefined();
   });
 });
+
+describe("progress and check-ins", () => {
+  it("never counts the future and keeps ranges ordered", async () => {
+    const { getProgress } = await import("./repository");
+    const summary = await getProgress("2999-01-01", "2026-01-01");
+    expect(summary.from <= summary.to).toBe(true);
+    expect(summary.to <= new Date().toISOString().slice(0, 10)).toBe(true);
+  });
+
+  it("awards check-in XP once a day", async () => {
+    const { saveCheckIn, getCheckInStatus } = await import("./repository");
+    const input = { mood: "good" as const, effort: "steady" as const, win: "Closures", obstacle: "", shareCheckedIn: true };
+    expect((await saveCheckIn(input)).xpAwarded).toBe(10);
+    expect((await saveCheckIn(input)).xpAwarded).toBe(0);
+    expect((await getCheckInStatus()).doneToday).toBe(true);
+  });
+
+  it("celebrates a new stage once and never takes it back", async () => {
+    const { getPendingStageUp, acknowledgeStageUp, saveFocusSession, undoCompleteTask, completeTask, getToday } = await import("./repository");
+    for (let i = 0; i < 70 && !(await getPendingStageUp()); i += 1) {
+      await saveFocusSession(`grow-${i}`, { taskId: null, focusedSeconds: 3600, plannedMinutes: 60, mode: "solo" });
+    }
+    const event = await getPendingStageUp();
+    expect(event?.stage).toBe("youngAdult");
+    await acknowledgeStageUp();
+    expect(await getPendingStageUp()).toBeNull();
+    const open = (await getToday()).tasks.find((task) => !task.isDone);
+    if (open) {
+      await completeTask(open.id);
+      const undone = await undoCompleteTask(open.id);
+      expect(undone.companion.stage).toBe("youngAdult");
+    }
+  });
+});

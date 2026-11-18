@@ -264,3 +264,73 @@ export interface GoalDetail {
   contributors: { name: string; doneCount: number; isOwner: boolean; isYou: boolean }[];
   focusHours: number;
 }
+
+export interface StageUpEvent {
+  stage: GrowthStage;
+  xp: number;
+  days: number;
+  extra: string;
+}
+
+export interface ProgressSummary {
+  from: string;
+  to: string;
+  activeDays: number;
+  focusMinutes: number;
+  /** Change against the same length of time just before, or null when there is nothing to compare. */
+  focusDeltaMinutes: number | null;
+  tasksDone: number;
+  habitsKeptPercent: number;
+  focusByDay: { iso: string; minutes: number }[];
+  habits: { id: string; name: string; icon: Habit["icon"]; met: number; scheduled: number }[];
+  bestWeek: { from: string; to: string; activeDays: number } | null;
+  byGoal: { id: string; title: string; tasksDone: number; focusMinutes: number; isPaused: boolean }[];
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  tone: "gold" | "violet" | "mint";
+  earnedOn: string | null;
+}
+
+export interface GoalSnapshot {
+  id: string;
+  title: string;
+  startedOn: string;
+  isShared: boolean;
+  doneCount: number;
+  totalCount: number;
+  focusHours: number;
+  areasActive: number;
+  reviews: number;
+  recent: { id: string; title: string; detail: string; isDone: boolean }[];
+}
+
+export interface SquadProgress {
+  hasSquad: boolean;
+  squadName: string;
+  focusedHours: number;
+  tasksDone: number;
+  checkedIn: number;
+  members: number;
+  sharedGoal: { id: string; title: string; doneCount: number; totalCount: number } | null;
+  moments: { id: string; name: string; text: string; when: string; canCheer: boolean }[];
+}
+
+export type Mood = "heavy" | "low" | "okay" | "good" | "bright";
+export type Effort = "rest" | "light" | "steady" | "strong" | "allIn";
+
+export interface CheckInInput {
+  mood: Mood;
+  effort: Effort;
+  win: string;
+  obstacle: string;
+  shareCheckedIn: boolean;
+}
+
+export interface CheckInStatus {
+  doneToday: boolean;
+  /** What saving today's check-in earns, decided by the server. */
+  xpForCheckIn: number;
+}

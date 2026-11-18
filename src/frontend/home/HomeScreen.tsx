@@ -214,7 +214,7 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
             setDismissedQuiet(true);
           }}
           onTask={() => setDismissedQuiet(true)}
-          onCheckIn={() => showToast("Check-ins arrive with the Progress screens.")}
+          onCheckIn={() => router.push("/check-in")}
           onSayHi={() => {
             sayHello();
             setDismissedQuiet(true);

@@ -1,4 +1,4 @@
-import type { CompanionState, FocusLobby, Habit, NotificationItem, PlannerData, SquadMember, Task } from "./types";
+import type { Achievement, CompanionState, FocusLobby, Habit, NotificationItem, PlannerData, SquadMember, Task } from "./types";
 
 export const mockCompanion: CompanionState = {
   stage: "teen",
@@ -98,3 +98,15 @@ export const mockFocusLobby: FocusLobby = {
 
 /** Focused minutes already logged this week before today's sessions. */
 export const mockWeekFocusedMinutes = 165;
+
+export const mockAchievements: Achievement[] = [
+  { id: "ach-1", title: "First week", tone: "gold", earnedOn: "8 Sep" },
+  { id: "ach-2", title: "Deep focus ×10", tone: "violet", earnedOn: "2 Nov" },
+  { id: "ach-3", title: "Reader", tone: "mint", earnedOn: null },
+];
+
+export const mockSquadMoments = [
+  { id: "sm-1", name: "Malik", text: "Malik hit 30 focus hours", when: "Tuesday", canCheer: true },
+  { id: "sm-2", name: "Kemi", text: "Kemi finished “Read chapter 3”", when: "Sunday", canCheer: true },
+  { id: "sm-3", name: "Zara", text: "Zara reached 20 reading sessions", when: "Saturday", canCheer: true },
+];
