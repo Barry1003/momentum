@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { BottomNav, Card, Logo, Sidebar, Tag } from "@/frontend/components";
 import { Companion } from "@/frontend/companion";
 import { useToday } from "@/frontend/hooks/useToday";
@@ -12,6 +12,7 @@ const desktopHrefs = { ...hrefs, create: "/planner" } as const;
 
 export function WorkspacePreview() {
   const pathname = usePathname();
+  const router = useRouter();
   const view = pathname === "/home" ? "home" : pathname === "/planner" ? "plan" : pathname === "/progress" ? "progress" : "me";
   const today = useToday();
   const squad = useSquad();
@@ -47,7 +48,7 @@ export function WorkspacePreview() {
               <p className="font-heading text-body text-text-muted">Show up today. Small steps count.</p>
             </Card>
             <Card>
-              <h2 className="font-display text-heading font-extrabold">Today's focus</h2>
+              <h2 className="font-display text-heading font-extrabold">Today&apos;s focus</h2>
               <div className="mt-4 space-y-3">
                 {today.isLoading ? <p>Loading sample tasks…</p> : (today.data?.tasks ?? []).slice(0, 4).map((task) => (
                   <label key={task.id} className="flex items-center gap-3 border-b border-outline py-2">
@@ -61,7 +62,7 @@ export function WorkspacePreview() {
         ) : view === "home" ? (
           <div className="grid gap-5 lg:grid-cols-2">
             <Card className="bg-cream">
-              <h2 className="font-display text-heading font-extrabold">We're growing together</h2>
+              <h2 className="font-display text-heading font-extrabold">We&apos;re growing together</h2>
               <div className="mt-5 flex justify-center">
                 <Companion stage="teen" reaction="idle" look={{ room: "lavender", outfit: "original" }} size="hero" />
               </div>
@@ -98,7 +99,7 @@ export function WorkspacePreview() {
           </Card>
         )}
       </main>
-      <BottomNav activeKey={view === "me" ? "me" : view} hrefs={hrefs} onCreate={() => { window.location.href = "/planner"; }} />
+      <BottomNav activeKey={view === "me" ? "me" : view} hrefs={hrefs} onCreate={() => { router.push("/planner"); }} />
     </div>
   );
 }
