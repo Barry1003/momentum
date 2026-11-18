@@ -273,7 +273,7 @@ export function GoalsView({ planner, onNewGoal }: { planner: PlannerData | null;
           <>
             {!planner ? <Skeleton className="h-64 rounded-[26px]" /> : null}
             {goals.map((goal) => (
-              <section key={goal.id} className="rounded-[26px] bg-surface p-4 shadow-raised">
+              <Link key={goal.id} href={`/goals/${goal.id}`} className="block rounded-[26px] bg-surface p-4 shadow-raised transition hover:shadow-floating">
                 <div className="flex items-baseline justify-between gap-3">
                   <h2 className="font-heading text-body font-bold text-text">{goal.title}</h2>
                   <span className="font-heading text-meta font-bold text-accent-strong">
@@ -294,7 +294,7 @@ export function GoalsView({ planner, onNewGoal }: { planner: PlannerData | null;
                   />
                 </div>
                 <p className="mt-2 font-heading text-meta text-text-muted">{goal.detail}</p>
-              </section>
+              </Link>
             ))}
             <button
               type="button"
@@ -346,7 +346,7 @@ export function SharedView({ planner }: { planner: PlannerData | null }) {
               Your squad sees &quot;done&quot; or &quot;not yet&quot; for these. Your other tasks stay private.
             </p>
             <Link
-              href="/planner?view=goals"
+              href={`/goals/${planner?.goals.find((goal) => goal.isShared)?.id ?? ""}`}
               className="w-full rounded-full bg-[image:var(--gradient-primary)] py-4 text-center font-heading text-body font-bold text-white shadow-pressable"
             >
               Open shared goal

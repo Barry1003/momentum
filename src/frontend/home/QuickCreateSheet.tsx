@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Button, Sheet } from "../components";
 import { cn } from "../lib/cn";
+import { createGoal } from "../mocks/repository";
 import type { NewHabitInput, NewTaskInput } from "../mocks/types";
 import { CheckIcon, PlayIcon, SparkleIcon, WaterIcon } from "./icons";
 
@@ -87,7 +88,8 @@ export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddH
       } else if (kind === "habit") {
         await onAddHabit({ name: trimmed, targetCount: habitTarget });
       } else if (kind === "goal") {
-        onNotice("Goals arrive with the Plan screens. Nothing was saved yet.");
+        const goal = await createGoal({ title: trimmed });
+        router.push(`/goals/${goal.id}`);
       } else {
         router.push("/focus");
       }

@@ -1,14 +1,18 @@
 "use client";
 
+import type { StaticImageData } from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { STAGE_ART } from "../companion";
+import { AriTile } from "../habits/views";
 import { useShell } from "../home/AppShell";
 import { usePlanner, type UseTodayResult } from "../hooks";
 import type { NewTaskInput, Task } from "../mocks/types";
 import { AddTaskView } from "./AddTaskView";
 import { monthLabel, weekOf } from "./dates";
 import { GoalsView, SharedView, TasksView, WeekView } from "./ListViews";
-import { BellButton, PlusButton, type PlannerView } from "./parts";
+import { BellButton, Pill, PlusButton, SubHeader, type PlannerView } from "./parts";
 import { TaskDoneSheet } from "./TaskDoneSheet";
 import { TodayView } from "./TodayView";
 
@@ -43,7 +47,7 @@ interface Celebration {
 export function PlannerScreen({ today }: { today: UseTodayResult }) {
   const params = useSearchParams();
   const router = useRouter();
-  const { showToast } = useShell();
+  const { showToast, openQuickCreate } = useShell();
   const planner = usePlanner();
   const [celebration, setCelebration] = useState<Celebration | null>(null);
 
@@ -103,11 +107,18 @@ export function PlannerScreen({ today }: { today: UseTodayResult }) {
       />
     );
   } else if (view === "goals") {
-    body = <GoalsView planner={planner.data} onNewGoal={() => showToast("Goal setup arrives with the Goals screens (03c).")} />;
+    body = <GoalsView planner={planner.data} onNewGoal={() => openQuickCreate("goal")} />;
   } else if (view === "shared") {
     body = <SharedView planner={planner.data} />;
   } else if (view === "add") {
-    body = <AddTaskView squadName={squadName === "your squad" ? "My squad" : squadName} onAdd={addTask} onCancel={() => router.push("/planner")} />;
+    body = <AddTaskView
+        squadName={squadName === "your squad" ? "My squad" : squadName}
+        initialTitle={(params.get("title") ?? "").slice(0, 120)}
+        onAdd={addTask}
+        onCancel={() => router.push("/planner")}
+      />;
+  } else if ((tasks && tasks.length === 0 && !planner.data?.carryOver) || params.get("preview") === "empty") {
+    body = <EmptyDay art={STAGE_ART[companion?.stage ?? "teen"].full} onGrowthStudio={() => showToast("Growth Studio arrives with section 06.")} />;
   } else {
     body = (
       <>
@@ -175,5 +186,37 @@ export function PlannerScreen({ today }: { today: UseTodayResult }) {
         />
       ) : null}
     </main>
+  );
+}
+
+const IDEAS = ["Drink water", "Tidy desk", "Read 5 pages", "Reply to one email"];
+
+/** Figma 03d · Planner · Empty first day. */
+function EmptyDay({ art, onGrowthStudio }: { art: StaticImageData; onGrowthStudio: () => void }) {
+  return (
+    <>
+      <SubHeader backHref="/home" backLabel="Back home" kicker="Plan · Today" title="A clean page." subtitle="Nothing planned yet. One small thing is enough." />
+      <div className="mt-5 grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-6">
+        <AriTile art={art} label="Start small" title="What’s one thing for today?" body="Something you can finish in 10–25 minutes." />
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="mb-2 font-heading text-label font-bold text-text">Ideas</p>
+            <div className="flex flex-wrap gap-2">
+              {IDEAS.map((idea) => (
+                <Link key={idea} href={`/planner?view=add&title=${encodeURIComponent(idea)}`}>
+                  <Pill selected={false}>{idea}</Pill>
+                </Link>
+              ))}
+            </div>
+          </div>
+          <Link href="/planner?view=add" className="w-full rounded-full bg-[image:var(--gradient-primary)] py-4 text-center font-heading text-body font-bold text-white shadow-pressable">
+            Add my first task
+          </Link>
+          <button type="button" onClick={onGrowthStudio} className="w-full rounded-full bg-surface py-4 font-heading text-body font-bold text-accent-strong shadow-raised">
+            Try Growth Studio
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

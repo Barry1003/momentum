@@ -85,3 +85,40 @@ describe("habits", () => {
     expect(resumed.pausedFrom).toBeNull();
   });
 });
+
+describe("goals", () => {
+  it("finishes a linked task once, on both the goal and today's list", async () => {
+    const { completeGoalTask, getGoal, getToday } = await import("./repository");
+    const before = (await getGoal("g-1"))!;
+    const first = await completeGoalTask("g-1", "gt-3");
+    expect(first.xpAwarded).toBe(10);
+    expect(first.goal.doneCount).toBe(before.doneCount + 1);
+    expect((await completeGoalTask("g-1", "gt-3")).xpAwarded).toBe(0);
+    expect((await getToday()).tasks.length).toBeGreaterThan(0);
+  });
+
+  it("never lets you finish someone else's or a private task on a shared goal", async () => {
+    const { completeGoalTask } = await import("./repository");
+    expect((await completeGoalTask("g-2", "gt-6")).xpAwarded).toBe(0);
+  });
+
+  it("awards a milestone once and the goal when the last one is reached", async () => {
+    const { confirmMilestone, getGoal } = await import("./repository");
+    const third = await confirmMilestone("g-1", "m-3");
+    expect(third.xpAwarded).toBe(60);
+    expect(third.goalReachedXp).toBeNull();
+    expect((await confirmMilestone("g-1", "m-3")).xpAwarded).toBe(0);
+    const last = await confirmMilestone("g-1", "m-4");
+    expect(last.goalReachedXp).toBe(200);
+    expect((await getGoal("g-1"))?.completedOn).not.toBeNull();
+  });
+
+  it("links a task added from a goal and counts it", async () => {
+    const { addGoalTask, createGoal } = await import("./repository");
+    const fresh = await createGoal({ title: "Learn to cook" });
+    expect(fresh.totalCount).toBe(0);
+    const next = await addGoalTask(fresh.id, { title: "Cook pasta", when: "today", priority: "medium" });
+    expect(next.totalCount).toBe(1);
+    expect(next.tasks[0].todayTaskId).toBeDefined();
+  });
+});

@@ -127,7 +127,7 @@ function SecondaryButton({ children, onClick, href }: { children: ReactNode; onC
   );
 }
 
-function AriTile({ art, label, title, body, children }: { art: StaticImageData; label: string; title: string; body: string; children?: ReactNode }) {
+export function AriTile({ art, label, title, body, children }: { art: StaticImageData; label: string; title: string; body: string; children?: ReactNode }) {
   return (
     <section className="flex items-stretch overflow-hidden rounded-[26px] bg-[#f8f0e2] shadow-floating">
       <div className="flex flex-1 flex-col justify-center p-5">

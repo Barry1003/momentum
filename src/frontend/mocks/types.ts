@@ -214,3 +214,53 @@ export interface SaveFocusResult {
   weekFocusedMinutes: number;
   companion: CompanionState;
 }
+
+export type MilestoneStatus = "reached" | "current" | "later";
+
+export interface GoalMilestone {
+  id: string;
+  title: string;
+  status: MilestoneStatus;
+  reachedOn?: string;
+  criteria: { id: string; label: string; done: boolean }[];
+}
+
+export interface GoalTask {
+  id: string;
+  title: string;
+  detail: string;
+  isDone: boolean;
+  /** The same task on today's list, when it is there. */
+  todayTaskId?: string;
+  /** Shared goals: the person it is assigned to, and whether they kept it private. */
+  assignee?: string;
+  isPrivate?: boolean;
+}
+
+export interface GoalActivity {
+  id: string;
+  kind: "task" | "milestone" | "focus" | "added";
+  text: string;
+  when: string;
+}
+
+export interface GoalDetail {
+  id: string;
+  title: string;
+  why: string | null;
+  isShared: boolean;
+  isPaused: boolean;
+  squadName?: string;
+  targetLabel: string;
+  startedOn: string;
+  completedOn: string | null;
+  /** Worked out by the server from tasks done; the ring shows it as is. */
+  doneCount: number;
+  totalCount: number;
+  milestones: GoalMilestone[];
+  tasks: GoalTask[];
+  linkedHabit: { name: string; detail: string } | null;
+  activity: GoalActivity[];
+  contributors: { name: string; doneCount: number; isOwner: boolean; isYou: boolean }[];
+  focusHours: number;
+}

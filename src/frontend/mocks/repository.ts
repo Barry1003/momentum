@@ -1,6 +1,7 @@
 import { mockCompanion, mockFocusLobby, mockHabits, mockNotifications, mockPlanner, mockSquadMembers, mockTasks, mockWeekFocusedMinutes } from "./data";
 import { MOMENT_XP, addDays, currentRun, isScheduledOn, isoDate } from "./habitRules";
-import type { CompanionState, ConsistencyMoment, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
+import { mockGoals } from "./goalsData";
+import type { CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
 
 const MOCK_LATENCY_MS = 250;
 const TASK_COMPLETE_XP = 10;
@@ -62,6 +63,9 @@ function visibleHabits(): Habit[] {
 const squadMembers = mockSquadMembers.map((member) => ({ ...member }));
 let notifications: NotificationItem[] = mockNotifications.map((item) => ({ ...item }));
 let planner: PlannerData = structuredClone(mockPlanner);
+let goals: GoalDetail[] = structuredClone(mockGoals);
+const MILESTONE_XP = 60;
+const GOAL_XP = 200;
 let weekFocusedMinutes = mockWeekFocusedMinutes;
 const savedFocusSessions = new Set<string>();
 let nextId = 100;
@@ -92,6 +96,7 @@ export async function completeTask(
   if (!before) throw new Error(`Unknown task: ${taskId}`);
   if (before.isDone) return delay({ task: before, companion, xpAwarded: 0 });
   tasks = tasks.map((task) => (task.id === taskId ? { ...task, isDone: true } : task));
+  syncGoalTask(taskId, true);
   const task = { ...before, isDone: true };
   const nextCompanion = awardXp(TASK_COMPLETE_XP);
   return delay({ task, companion: nextCompanion, xpAwarded: TASK_COMPLETE_XP });
@@ -103,6 +108,7 @@ export async function undoCompleteTask(taskId: string): Promise<{ task: Task; co
   if (!before) throw new Error(`Unknown task: ${taskId}`);
   if (!before.isDone) return delay({ task: before, companion });
   tasks = tasks.map((task) => (task.id === taskId ? { ...task, isDone: false } : task));
+  syncGoalTask(taskId, false);
   const nextCompanion = awardXp(-TASK_COMPLETE_XP);
   return delay({ task: { ...before, isDone: false }, companion: nextCompanion });
 }
@@ -228,8 +234,169 @@ export async function addTask(input: NewTaskInput): Promise<{ task: Task }> {
   return delay({ task });
 }
 
+function toPlannerGoal(goal: GoalDetail): PlannerGoal {
+  return {
+    id: goal.id,
+    title: goal.title,
+    doneCount: goal.doneCount,
+    totalCount: goal.totalCount,
+    detail: goal.isShared
+      ? `${goal.squadName ?? "Squad"} · shared · ${goal.targetLabel}`
+      : `Personal · ${goal.targetLabel === "no target" ? "no target" : `target ${goal.targetLabel}`}`,
+    isShared: goal.isShared,
+    isPaused: goal.isPaused,
+  };
+}
+
 export async function getPlanner(): Promise<PlannerData> {
+  planner = { ...planner, goals: goals.map(toPlannerGoal) };
   return delay(planner);
+}
+
+// ---------------------------------------------------------------- goals
+
+/** A today task and its goal task are one task: finishing either finishes both. */
+function syncGoalTask(todayTaskId: string, isDone: boolean): void {
+  goals = goals.map((goal) => {
+    const linked = goal.tasks.find((task) => task.todayTaskId === todayTaskId);
+    if (!linked || linked.isDone === isDone) return goal;
+    return {
+      ...goal,
+      doneCount: Math.max(0, goal.doneCount + (isDone ? 1 : -1)),
+      tasks: goal.tasks.map((task) => (task.id === linked.id ? { ...task, isDone, detail: isDone ? "Done today" : task.detail } : task)),
+      activity: isDone
+        ? [{ id: `a-${nextId++}`, kind: "task" as const, text: `${linked.title} completed`, when: "Today" }, ...goal.activity]
+        : goal.activity,
+    };
+  });
+}
+
+function findGoal(goalId: string): GoalDetail {
+  const goal = goals.find((item) => item.id === goalId);
+  if (!goal) throw new Error(`Unknown goal: ${goalId}`);
+  return goal;
+}
+
+function replaceGoal(next: GoalDetail): GoalDetail {
+  goals = goals.map((goal) => (goal.id === next.id ? next : goal));
+  return next;
+}
+
+export async function getGoal(goalId: string): Promise<GoalDetail | null> {
+  return delay(goals.find((goal) => goal.id === goalId) ?? null);
+}
+
+export async function createGoal(input: { title: string; why?: string }): Promise<GoalDetail> {
+  const title = input.title.trim().slice(0, 80);
+  if (title.length < 2) throw new Error("A goal needs a short name.");
+  const goal: GoalDetail = {
+    id: `g-${nextId++}`,
+    title,
+    why: input.why?.trim() || null,
+    isShared: false,
+    isPaused: false,
+    targetLabel: "no target",
+    startedOn: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+    completedOn: null,
+    doneCount: 0,
+    totalCount: 0,
+    milestones: [],
+    tasks: [],
+    linkedHabit: null,
+    activity: [],
+    contributors: [],
+    focusHours: 0,
+  };
+  goals = [...goals, goal];
+  return delay(goal);
+}
+
+/** Finish a goal's task. XP comes from here; the same task on today's list is finished too. */
+export async function completeGoalTask(goalId: string, goalTaskId: string): Promise<{ goal: GoalDetail; companion: CompanionState; xpAwarded: number }> {
+  const goal = findGoal(goalId);
+  const task = goal.tasks.find((item) => item.id === goalTaskId);
+  if (!task) throw new Error(`Unknown goal task: ${goalTaskId}`);
+  if (task.isDone || task.isPrivate || (goal.isShared && task.assignee !== "You")) {
+    return delay({ goal, companion, xpAwarded: 0 });
+  }
+  if (task.todayTaskId && tasks.some((item) => item.id === task.todayTaskId && !item.isDone)) {
+    tasks = tasks.map((item) => (item.id === task.todayTaskId ? { ...item, isDone: true } : item));
+  }
+  const next = replaceGoal({
+    ...goal,
+    doneCount: goal.doneCount + 1,
+    tasks: goal.tasks.map((item) => (item.id === goalTaskId ? { ...item, isDone: true, detail: "Done today" } : item)),
+    activity: [{ id: `a-${nextId++}`, kind: "task", text: `${task.title} completed`, when: "Today" }, ...goal.activity],
+  });
+  const nextCompanion = awardXp(TASK_COMPLETE_XP);
+  return delay({ goal: next, companion: nextCompanion, xpAwarded: TASK_COMPLETE_XP });
+}
+
+/** A task added from a goal is linked to it and shows in the Planner too. */
+export async function addGoalTask(goalId: string, input: { title: string; when: TaskWhen; priority: TaskPriority }): Promise<GoalDetail> {
+  const goal = findGoal(goalId);
+  const title = input.title.trim().slice(0, 120);
+  if (title.length < 2) throw new Error("A task needs a short name.");
+  const { task } = await addTask({ title, when: input.when, priority: input.priority, goalName: goal.title });
+  const goalTask: GoalTask = {
+    id: `gt-${nextId++}`,
+    title,
+    detail: input.when === "today" ? "today" : input.when === "tomorrow" ? "tomorrow" : "date to pick",
+    isDone: false,
+    todayTaskId: input.when === "today" ? task.id : undefined,
+    assignee: goal.isShared ? "You" : undefined,
+  };
+  const next = replaceGoal({
+    ...findGoal(goalId),
+    totalCount: goal.totalCount + 1,
+    tasks: [...goal.tasks, goalTask],
+    activity: [{ id: `a-${nextId++}`, kind: "added", text: `${title} added`, when: "Today" }, ...goal.activity],
+  });
+  return delay(next);
+}
+
+export async function toggleCriterion(goalId: string, milestoneId: string, criterionId: string): Promise<GoalDetail> {
+  const goal = findGoal(goalId);
+  const next = replaceGoal({
+    ...goal,
+    milestones: goal.milestones.map((milestone) =>
+      milestone.id === milestoneId && milestone.status !== "reached"
+        ? { ...milestone, criteria: milestone.criteria.map((item) => (item.id === criterionId ? { ...item, done: !item.done } : item)) }
+        : milestone,
+    ),
+  });
+  return delay(next);
+}
+
+/**
+ * The person confirms a milestone; confirming is what makes it count.
+ * Reaching the last one reaches the goal. Repeat calls award nothing.
+ */
+export async function confirmMilestone(
+  goalId: string,
+  milestoneId: string,
+): Promise<{ goal: GoalDetail; companion: CompanionState; xpAwarded: number; goalReachedXp: number | null }> {
+  const goal = findGoal(goalId);
+  const index = goal.milestones.findIndex((item) => item.id === milestoneId);
+  if (index < 0 || goal.milestones[index].status !== "current") {
+    return delay({ goal, companion, xpAwarded: 0, goalReachedXp: null });
+  }
+  const reachedOn = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  const milestones = goal.milestones.map((milestone, position) => {
+    if (position === index) return { ...milestone, status: "reached" as const, reachedOn };
+    if (position === index + 1 && milestone.status === "later") return { ...milestone, status: "current" as const };
+    return milestone;
+  });
+  const allReached = milestones.every((milestone) => milestone.status === "reached");
+  let nextCompanion = awardXp(MILESTONE_XP);
+  if (allReached) nextCompanion = awardXp(GOAL_XP);
+  const next = replaceGoal({
+    ...goal,
+    milestones,
+    completedOn: allReached ? reachedOn : null,
+    activity: [{ id: `a-${nextId++}`, kind: "milestone", text: `${goal.milestones[index].title} reached`, when: "Today" }, ...goal.activity],
+  });
+  return delay({ goal: next, companion: nextCompanion, xpAwarded: MILESTONE_XP, goalReachedXp: allReached ? GOAL_XP : null });
 }
 
 /** "Move to today" for yesterday's leftover: it joins today's list, no penalty. */

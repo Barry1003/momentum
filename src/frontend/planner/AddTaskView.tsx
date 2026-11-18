@@ -76,13 +76,14 @@ type Visibility = "private" | "squad";
 
 export interface AddTaskViewProps {
   squadName: string;
+  initialTitle?: string;
   onAdd: (input: NewTaskInput) => Promise<void>;
   onCancel: () => void;
 }
 
 /** Figma 03 · Planner · Add a task (details). Private by default. */
-export function AddTaskView({ squadName, onAdd, onCancel }: AddTaskViewProps) {
-  const [title, setTitle] = useState("");
+export function AddTaskView({ squadName, initialTitle = "", onAdd, onCancel }: AddTaskViewProps) {
+  const [title, setTitle] = useState(initialTitle);
   const [when, setWhen] = useState<TaskWhen>("today");
   const [duration, setDuration] = useState<Duration>("25");
   const [customMinutes, setCustomMinutes] = useState("");
