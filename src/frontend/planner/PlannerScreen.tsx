@@ -107,7 +107,7 @@ export function PlannerScreen({ today }: { today: UseTodayResult }) {
   } else if (view === "shared") {
     body = <SharedView planner={planner.data} />;
   } else if (view === "add") {
-    body = <AddTaskView squadName={squadName === "your squad" ? "My squad" : squadName} onAdd={addTask} onCancel={() => router.push("/planner")} />;
+    body = <AddTaskView squadName={squadName === "your squad" ? "My squad" : squadName} goals={planner.data?.goals ?? []} onAdd={addTask} onCancel={() => router.push("/planner")} />;
   } else {
     body = (
       <>
