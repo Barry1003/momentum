@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { authClient } from "@/frontend/auth/client";
 import { Button } from "@/frontend/components";
 import { GoogleMark } from "@/frontend/components/GoogleMark";
 import { AuthScene, SocialButtons } from "@/frontend/onboarding/AuthScene";
@@ -23,8 +24,9 @@ export default function CreateAccountPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const score = passwordScore(password);
+  const [busy, setBusy] = useState(false);
 
-  function handleCreate() {
+  async function handleCreate() {
     const validEmail = emailSchema.safeParse(email);
     let isValid = true;
     if (!validEmail.success) {
@@ -36,10 +38,23 @@ export default function CreateAccountPage() {
       isValid = false;
     }
     if (!isValid || !validEmail.success) return;
-    // Never store the password. The account itself is created by the
-    // auth integration; this preview only carries the email forward.
-    update({ email: validEmail.data });
-    router.push("/onboarding/verify-email");
+    setBusy(true);
+    setNotice(null);
+    try {
+      const response = await authClient.signUp.email({
+        email: validEmail.data, password, name: "Momentum member",
+      });
+      if (response.error) {
+        setNotice(response.error.message || "Could not create your account.");
+        return;
+      }
+      update({ email: validEmail.data });
+      router.push("/onboarding/verify-email");
+    } catch {
+      setNotice("We could not reach the account service. Try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -98,7 +113,7 @@ export default function CreateAccountPage() {
             <span className="ml-1 w-20 text-right font-heading text-meta text-success">{STRENGTH_LABEL[score]}</span>
           </div>
         ) : null}
-        <Button type="submit" fullWidth={false} className="mt-1 w-full">
+        <Button type="submit" disabled={busy} fullWidth={false} className="mt-1 w-full">
           Create account
         </Button>
       </form>
@@ -110,9 +125,18 @@ export default function CreateAccountPage() {
       ) : null}
 
       <SocialButtons
-        onSelect={(provider) =>
-          setNotice(`${provider === "google" ? "Google" : "Apple"} sign-up will work once accounts are connected. No account was created.`)
-        }
+        onSelect={async (provider) => {
+          if (provider === "apple") {
+            setNotice("Apple sign-in is not available yet. Use Google or email.");
+            return;
+          }
+          setBusy(true);
+          try {
+            const response = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+            if (response.error) setNotice(response.error.message || "Google sign-in failed.");
+          } catch { setNotice("Could not start Google sign-in."); }
+          finally { setBusy(false); }
+        }}
         google={<GoogleMark className="h-6 w-6" />}
         apple={<AppleMark className="h-6 w-6 text-text" />}
       />
