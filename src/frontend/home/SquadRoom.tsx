@@ -4,7 +4,9 @@ import Image from "next/image";
 import { useState } from "react";
 import ariYoungAdult from "../assets/companion/ari-youngAdult.png";
 import malikFace from "../assets/faces/malik-face.png";
+import malikFull from "../assets/faces/malik-full.png";
 import zaraFace from "../assets/faces/zara-face.png";
+import zaraFull from "../assets/faces/zara-full.png";
 import { CheckOrb, FaceAvatar } from "../components";
 import { cn } from "../lib/cn";
 import type { SquadMember, Task } from "../mocks/types";
@@ -25,6 +27,32 @@ const ACTIVITY = [
   { id: "a-2", name: "Dayo", text: "Dayo grew to Young Adult", when: "Yesterday" },
 ];
 
+function memberStatus(member: SquadMember): string {
+  if (member.isFocusing) return "Focusing";
+  if (member.isCheckedInToday) return "Checked in";
+  return "Resting";
+}
+
+/** A squad member standing in their own nook on the shared stage. */
+function MemberNook({ member, art, nook }: { member: SquadMember; art: typeof zaraFull; nook: string }) {
+  return (
+    <figure className="relative flex flex-col items-center">
+      <div className={cn("relative h-52 w-full overflow-hidden rounded-[20px] shadow-raised", nook)}>
+        <Image src={art} alt={member.name} fill sizes="120px" className="object-contain object-bottom" />
+      </div>
+      <span
+        className={cn(
+          "relative -mt-3 rounded-full px-2.5 py-1 font-heading text-meta font-bold shadow-raised",
+          member.isFocusing ? "bg-success-tint text-success" : "bg-surface text-text-muted",
+        )}
+      >
+        ● {memberStatus(member)}
+      </span>
+      <figcaption className="relative mt-1 font-heading text-label font-bold text-text">{member.name}</figcaption>
+    </figure>
+  );
+}
+
 export interface SquadRoomProps {
   members: SquadMember[];
   sharedTask: Task | null;
@@ -37,8 +65,9 @@ export interface SquadRoomProps {
 export function SquadRoom({ members, sharedTask, onCompleteShared, onShare, onCheer }: SquadRoomProps) {
   const [sent, setSent] = useState<string | null>(null);
   const focusing = members.filter((member) => member.isFocusing).length + 1;
-  const featured = members[0];
-  const rest = members.slice(1);
+  const zara = members.find((member) => member.name === "Zara");
+  const malik = members.find((member) => member.name === "Malik");
+  const others = members.filter((member) => member !== zara && member !== malik);
 
   return (
     <div className="flex flex-col gap-5">
@@ -63,17 +92,7 @@ export function SquadRoom({ members, sharedTask, onCompleteShared, onShare, onCh
 
         <div className="relative mt-4 grid grid-cols-3 items-end gap-2 pb-6">
           <span aria-hidden className="absolute inset-x-0 bottom-0 h-10 rounded-[50%] bg-[#d9ccf6] shadow-[0_6px_0_#b9a3f0]" />
-          {featured ? (
-            <figure className="relative flex flex-col items-center">
-              <div className="grid h-44 w-full place-items-center rounded-[20px] bg-cream shadow-raised">
-                <FaceAvatar name={featured.name} src={FACES[featured.name]} size={88} />
-              </div>
-              <span className="relative -mt-3 rounded-full bg-success-tint px-2.5 py-1 font-heading text-meta font-bold text-success">
-                ● {featured.isFocusing ? "Focusing" : featured.isCheckedInToday ? "Checked in" : "Resting"}
-              </span>
-              <figcaption className="relative mt-1 font-heading text-label font-bold text-text">{featured.name}</figcaption>
-            </figure>
-          ) : null}
+          {zara ? <MemberNook member={zara} art={zaraFull} nook="bg-[#fef3e1]" /> : null}
           <figure className="relative flex flex-col items-center">
             <div className="relative h-52 w-full overflow-hidden rounded-[20px] bg-accent-tint ring-2 ring-accent shadow-raised">
               <Image src={ariYoungAdult} alt="Your companion Ari" fill sizes="120px" className="object-contain object-bottom" />
@@ -83,18 +102,20 @@ export function SquadRoom({ members, sharedTask, onCompleteShared, onShare, onCh
             </span>
             <figcaption className="relative mt-1 font-heading text-label font-bold text-text">Ari (you)</figcaption>
           </figure>
-          <figure className="relative flex flex-col items-center">
-            <div className="flex h-44 w-full flex-col items-center justify-center gap-1.5 rounded-[20px] border-2 border-dashed border-outline bg-surface/70 p-2">
-              {rest.slice(0, 3).map((member) => (
-                <FaceAvatar key={member.id} name={member.name} src={FACES[member.name]} size={40} />
-              ))}
-              <span className="text-center font-heading text-meta text-text-muted">
-                {rest.map((member) => member.name).join(", ")}
-              </span>
-            </div>
-            <figcaption className="relative mt-4 font-heading text-label font-bold text-text">+{rest.length} more</figcaption>
-          </figure>
+          {malik ? <MemberNook member={malik} art={malikFull} nook="bg-[#fdf9f2]" /> : null}
         </div>
+        {others.length ? (
+          <div className="mt-1 flex items-center justify-center gap-2">
+            <span className="flex -space-x-2">
+              {others.map((member) => (
+                <FaceAvatar key={member.id} name={member.name} size={28} />
+              ))}
+            </span>
+            <span className="font-heading text-label font-bold text-text">
+              +{others.length} more · {others.map((member) => member.name).join(", ")}
+            </span>
+          </div>
+        ) : null}
         <p className="mt-2 font-heading text-meta text-text-muted">Everyone moves at their own pace. No rankings.</p>
       </section>
 
