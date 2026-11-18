@@ -14,12 +14,16 @@ export const createHabitSchema = z.object({
   targetValue: z.number().int().min(1).max(100000).default(1),
   unit: z.string().trim().max(40).optional(),
   reminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  scheduleDays: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
+  startsOn: habitDate.optional(),
   goalId: z.string().min(1).max(128).optional(),
   sharedWithSquadId: z.string().min(1).max(128).optional(),
 }).strict();
 
 export const updateHabitSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
+  scheduleDays: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
+  targetValue: z.number().int().min(1).max(100000).optional(),
   description: z.string().trim().max(2000).nullable().optional(),
   category: z.string().trim().max(80).nullable().optional(),
   icon: z.string().trim().max(80).nullable().optional(),
