@@ -9,6 +9,10 @@ import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
 import { companionNameSchema } from "@/frontend/onboarding/schemas";
 import { OnboardingProgress } from "@/frontend/onboarding/OnboardingProgress";
 import { StepShell } from "@/frontend/onboarding/StepShell";
+import boyFace from "@/frontend/assets/companion/ari-child-face.png";
+import girlFace from "@/frontend/assets/faces/zara-face.png";
+
+const LOOK_FACE = { boy: boyFace, girl: girlFace } as const;
 
 export default function CreateCompanionPage() {
   const router = useRouter();
@@ -62,15 +66,29 @@ export default function CreateCompanionPage() {
         <GreetingBubble visible={greeting.hasGreeted} wave className="absolute top-[64px] right-4 max-w-[150px]">
           Hi! Let&apos;s grow together.
         </GreetingBubble>
-        <Companion
-          stage="child"
-          reaction={greeting.reaction}
-          look={{ room: "lavender", outfit: "original" }}
-          size="hero"
-          onTap={greeting.sayHello}
-          onReactionEnd={greeting.onReactionEnd}
-          followPointer
-        />
+        {look === "boy" ? (
+          <Companion
+            stage="child"
+            reaction={greeting.reaction}
+            look={{ room: "lavender", outfit: "original" }}
+            size="hero"
+            onTap={greeting.sayHello}
+            onReactionEnd={greeting.onReactionEnd}
+            followPointer
+          />
+        ) : (
+          // Girl full-body stage art isn't exported from Figma yet
+          // (page 02, "Source / Anime Female / 5 Stages"); show her portrait.
+          <button
+            type="button"
+            onClick={greeting.sayHello}
+            aria-label="Say hi to your companion"
+            className={cn("mb-10 rounded-full", greeting.reaction === "hello" ? "animate-companion-hello" : "animate-companion-idle")}
+            onAnimationEnd={greeting.onReactionEnd}
+          >
+            <FaceAvatar name="Girl companion" src={LOOK_FACE.girl} size={150} />
+          </button>
+        )}
       </div>
 
       <p className="font-heading text-label font-bold text-text">Choose a look</p>
@@ -80,12 +98,13 @@ export default function CreateCompanionPage() {
             key={option}
             type="button"
             onClick={() => setLook(option)}
+            aria-pressed={look === option}
             className={cn(
               "flex flex-1 items-center gap-3 rounded-card bg-surface py-2.5 pr-3.5 pl-2.5 shadow-raised",
               look === option && "border-2 border-accent shadow-floating",
             )}
           >
-            <FaceAvatar name={option === "boy" ? "Boy" : "Girl"} size={52} />
+            <FaceAvatar name={option === "boy" ? "Boy" : "Girl"} src={LOOK_FACE[option]} size={52} />
             <span className={cn("font-heading text-label font-bold", look === option ? "text-accent-strong" : "text-text")}>
               {option === "boy" ? "Boy" : "Girl"}
             </span>
