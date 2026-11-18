@@ -16,12 +16,9 @@ export const companionNameSchema = z
 
 export const verificationCodeSchema = z.array(z.string().regex(/^\d$/)).length(6);
 
-/** Invite codes look like NORTH-4821 (letters, a dash, 4 digits). */
-export const squadCodeSchema = z
-  .string()
-  .trim()
-  .toUpperCase()
-  .regex(/^[A-Z]{3,10}-\d{4}$/, "Codes look like NORTH-4821.");
+/** Invite links use high-entropy tokens. Four-digit codes are not secure. */
+export const squadCodeSchema = z.string().trim().min(32, "Paste your full invite code.").max(128)
+  .regex(/^[A-Za-z0-9_-]+$/, "Paste a valid invite code.");
 
 export const squadNameSchema = z
   .string()
