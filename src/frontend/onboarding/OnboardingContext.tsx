@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { onboardingApi } from "./api";
 
 export interface OnboardingData {
   email: string;
@@ -44,6 +45,22 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         // ignore malformed storage, keep defaults
       }
     }
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    void onboardingApi.status().then(status => {
+      if (!mounted || !status.profile) return;
+      setData(previous => ({
+        ...previous,
+        displayName: status.profile?.displayName || previous.displayName,
+        companionName: status.avatar?.name || previous.companionName,
+        companionStyle: status.avatar ? (status.avatar.artStyle === "ANIME" ? "anime" : "soft3d") : previous.companionStyle,
+        companionLook: status.avatar ? (status.avatar.bodyForm === "BOY" ? "boy" : "girl") : previous.companionLook,
+        path: status.profile.onboardingStep === "PATH" || status.complete ? status.path : previous.path,
+      }));
+    }).catch(() => { /* A signed-out preview has no server draft. */ });
+    return () => { mounted = false; };
   }, []);
 
   const update = (patch: Partial<OnboardingData>) => {
