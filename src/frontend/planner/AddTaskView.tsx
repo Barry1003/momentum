@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { cn } from "../lib/cn";
-import type { NewTaskInput, TaskPriority, TaskRepeat, TaskWhen } from "../mocks/types";
+import type { NewTaskInput, PlannerGoal, TaskPriority, TaskRepeat, TaskWhen } from "../mocks/types";
 import { Pill, SubHeader } from "./parts";
 
 function Choice<T extends string>({
