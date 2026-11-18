@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Field, Note, ScreenHeader } from "@/frontend/components";
+import { StepShell } from "@/frontend/onboarding/StepShell";
 
 export default function CantGetInPage() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function CantGetInPage() {
   const [sent, setSent] = useState(false);
 
   return (
+    <StepShell>
     <div className="flex flex-col gap-[18px]">
       <ScreenHeader kicker="Sign in" title="Can&apos;t get in?" onBack={() => router.back()} />
 
@@ -33,5 +35,6 @@ export default function CantGetInPage() {
         </a>
       </p>
     </div>
+    </StepShell>
   );
 }

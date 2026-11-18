@@ -177,3 +177,150 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .momentum-launch-glow, .momentum-launch-mark, .momentum-launch-dot { animation: none; }
 }
+
+/* ------------------------------------------------------------------ */
+/* Live companion motion (PNG renderer). Growth stage art never changes */
+/* here; these are temporary reaction states only.                     */
+/* ------------------------------------------------------------------ */
+.companion-body {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+@keyframes companion-idle {
+  0%, 100% { transform: translateY(0) rotate(0deg) scaleY(1); }
+  25% { transform: translateY(-1px) rotate(-0.6deg) scaleY(1.012); }
+  50% { transform: translateY(0) rotate(0deg) scaleY(1.018); }
+  75% { transform: translateY(-1px) rotate(0.6deg) scaleY(1.008); }
+}
+.animate-companion-idle { animation: companion-idle 5.5s ease-in-out infinite; }
+
+/* "hello": a happy hop with a head-tilt sway, played once. */
+@keyframes companion-hello {
+  0% { transform: translateY(0) rotate(0deg) scale(1); }
+  14% { transform: translateY(2px) rotate(0deg) scale(1.03, 0.96); }
+  28% { transform: translateY(-14px) rotate(-4deg) scale(0.98, 1.03); }
+  44% { transform: translateY(0) rotate(3deg) scale(1.02, 0.98); }
+  58% { transform: translateY(-5px) rotate(-3deg) scale(1); }
+  74% { transform: translateY(0) rotate(2deg) scale(1); }
+  88% { transform: translateY(0) rotate(-1deg) scale(1); }
+  100% { transform: translateY(0) rotate(0deg) scale(1); }
+}
+.animate-companion-hello { animation: companion-hello 1.5s cubic-bezier(.3,.7,.3,1) 1; }
+
+@keyframes companion-celebrate {
+  0%, 100% { transform: translateY(0) scale(1); }
+  20% { transform: translateY(3px) scale(1.05, 0.94); }
+  40% { transform: translateY(-22px) scale(0.96, 1.06) rotate(-3deg); }
+  60% { transform: translateY(0) scale(1.04, 0.97) rotate(2deg); }
+  80% { transform: translateY(-8px) scale(1) rotate(0deg); }
+}
+.animate-companion-celebrate { animation: companion-celebrate 1.3s ease-out 1; }
+
+.companion-shadow {
+  display: block;
+  width: 62%;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(76, 49, 155, .28), rgba(76, 49, 155, 0));
+}
+@keyframes companion-shadow {
+  0%, 100% { transform: scaleX(1); opacity: .9; }
+  50% { transform: scaleX(.94); opacity: .75; }
+}
+.animate-companion-shadow { animation: companion-shadow 5.5s ease-in-out infinite; }
+
+/* Peek: the companion rises from behind a card on arrival. */
+@keyframes companion-peek {
+  0% { transform: translateY(70%); opacity: 0; }
+  60% { transform: translateY(-6%); opacity: 1; }
+  80% { transform: translateY(2%); }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.animate-companion-peek { animation: companion-peek .9s cubic-bezier(.2,.8,.2,1) both; }
+
+/* Greeting bubble + waving hand */
+@keyframes bubble-pop {
+  0% { transform: scale(.4) translateY(8px); opacity: 0; }
+  70% { transform: scale(1.06) translateY(0); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-bubble-pop { animation: bubble-pop .45s cubic-bezier(.2,.8,.2,1) both; transform-origin: 0% 100%; }
+
+@keyframes wave-hand {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(18deg); }
+  20% { transform: rotate(-10deg); }
+  30% { transform: rotate(16deg); }
+  40% { transform: rotate(-6deg); }
+  50% { transform: rotate(10deg); }
+}
+.animate-wave-hand { display: inline-block; transform-origin: 70% 80%; animation: wave-hand 1.8s ease-in-out 2; }
+
+@keyframes sparkle-twinkle {
+  0%, 100% { transform: scale(.6) rotate(0deg); opacity: .25; }
+  50% { transform: scale(1) rotate(25deg); opacity: 1; }
+}
+.animate-sparkle { animation: sparkle-twinkle 2.4s ease-in-out infinite; }
+
+@keyframes cloud-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(10px); }
+}
+.animate-cloud-drift { animation: cloud-drift 9s ease-in-out infinite; }
+
+@keyframes plant-sway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-2deg); }
+}
+.animate-plant-sway { transform-box: fill-box; transform-origin: 50% 100%; animation: plant-sway 6s ease-in-out infinite; }
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise-in { animation: rise-in .6s cubic-bezier(.2,.8,.2,1) both; }
+
+/* ------------------------------------------------------------------ */
+/* Motion splash                                                       */
+/* ------------------------------------------------------------------ */
+.splash-figure { transform-box: fill-box; transform-origin: 50% 100%; animation: splash-figure-rise .6s cubic-bezier(.2,.9,.25,1.2) both; }
+.splash-figure-1 { animation-delay: .15s; }
+.splash-figure-2 { animation-delay: .35s; }
+.splash-figure-3 { animation-delay: .55s; }
+@keyframes splash-figure-rise {
+  from { opacity: 0; transform: translateY(40%) scale(.6); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.splash-head { transform-box: fill-box; transform-origin: 50% 50%; animation: splash-head-pop .7s cubic-bezier(.2,.9,.25,1.4) .85s both, splash-head-glow 2.4s ease-in-out 1.6s infinite; }
+@keyframes splash-head-pop {
+  0% { opacity: 0; transform: translateY(30px) scale(.2); }
+  70% { opacity: 1; transform: translateY(-4px) scale(1.2); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes splash-head-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 184, 64, 0)); }
+  50% { filter: drop-shadow(0 0 6px rgba(255, 184, 64, .9)); }
+}
+.splash-word { animation: rise-in .6s cubic-bezier(.2,.8,.2,1) 1.15s both; }
+.splash-tagline { animation: rise-in .6s cubic-bezier(.2,.8,.2,1) 1.4s both; }
+.splash-companion { animation: companion-peek 1s cubic-bezier(.2,.8,.2,1) 1.55s both; }
+.splash-ring { animation: splash-ring 1.6s ease-out .9s both; }
+@keyframes splash-ring {
+  from { transform: scale(.4); opacity: .7; }
+  to { transform: scale(2.2); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-companion-idle, .animate-companion-hello, .animate-companion-celebrate,
+  .animate-companion-shadow, .animate-companion-peek, .animate-bubble-pop, .animate-wave-hand,
+  .animate-sparkle, .animate-cloud-drift, .animate-plant-sway, .animate-rise-in,
+  .splash-figure, .splash-head, .splash-word, .splash-tagline, .splash-companion, .splash-ring {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+  .splash-ring { display: none; }
+}

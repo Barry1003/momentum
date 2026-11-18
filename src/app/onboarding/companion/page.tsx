@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Field, FaceAvatar, ScreenHeader, Tag } from "@/frontend/components";
-import { Companion } from "@/frontend/companion";
+import { Companion, GreetingBubble, useGreeting } from "@/frontend/companion";
 import { cn } from "@/frontend/lib/cn";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
 import { companionNameSchema } from "@/frontend/onboarding/schemas";
+import { OnboardingProgress } from "@/frontend/onboarding/OnboardingProgress";
+import { StepShell } from "@/frontend/onboarding/StepShell";
 
 export default function CreateCompanionPage() {
   const router = useRouter();
@@ -15,6 +17,7 @@ export default function CreateCompanionPage() {
   const [look, setLook] = useState(data.companionLook);
   const [name, setName] = useState(data.companionName);
   const [error, setError] = useState<string | null>(null);
+  const greeting = useGreeting(500);
 
   function handleContinue() {
     const result = companionNameSchema.safeParse(name);
@@ -27,9 +30,10 @@ export default function CreateCompanionPage() {
   }
 
   return (
+    <StepShell>
     <div className="flex flex-col gap-5">
+      <OnboardingProgress step={4} />
       <ScreenHeader
-        kicker="Step 4 of 5"
         title={<>Who is growing<br />with you?</>}
         subtitle="Your companion starts small and grows as you show up. Growth is earned and never lost."
         onBack={() => router.back()}
@@ -55,10 +59,18 @@ export default function CreateCompanionPage() {
         <Tag tone="white" className="absolute top-4 left-4">
           Starts as Child · 5 stages ahead
         </Tag>
-        <div className="absolute top-[70px] right-4 max-w-[150px] rounded-bl-md rounded-tl-2xl rounded-tr-2xl rounded-br-2xl bg-surface px-3 py-2 shadow-raised">
-          <p className="font-heading text-meta text-text">Hi! Let&apos;s grow together.</p>
-        </div>
-        <Companion stage="child" reaction="idle" look={{ room: "lavender", outfit: "original" }} size="hero" />
+        <GreetingBubble visible={greeting.hasGreeted} wave className="absolute top-[64px] right-4 max-w-[150px]">
+          Hi! Let&apos;s grow together.
+        </GreetingBubble>
+        <Companion
+          stage="child"
+          reaction={greeting.reaction}
+          look={{ room: "lavender", outfit: "original" }}
+          size="hero"
+          onTap={greeting.sayHello}
+          onReactionEnd={greeting.onReactionEnd}
+          followPointer
+        />
       </div>
 
       <p className="font-heading text-label font-bold text-text">Choose a look</p>
@@ -101,5 +113,6 @@ export default function CreateCompanionPage() {
         Back
       </button>
     </div>
+    </StepShell>
   );
 }
