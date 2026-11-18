@@ -1,5 +1,5 @@
-import { mockCompanion, mockHabits, mockNotifications, mockSquadMembers, mockTasks } from "./data";
-import type { CompanionState, Habit, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, SquadData, Task, TodayData } from "./types";
+import { mockCompanion, mockHabits, mockNotifications, mockPlanner, mockSquadMembers, mockTasks } from "./data";
+import type { CompanionState, Habit, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
 
 const MOCK_LATENCY_MS = 250;
 const TASK_COMPLETE_XP = 10;
@@ -13,6 +13,7 @@ let tasks: Task[] = mockTasks.map((task) => ({ ...task }));
 let habits: Habit[] = mockHabits.map((habit) => ({ ...habit }));
 const squadMembers = mockSquadMembers.map((member) => ({ ...member }));
 let notifications: NotificationItem[] = mockNotifications.map((item) => ({ ...item }));
+let planner: PlannerData = structuredClone(mockPlanner);
 let nextId = 100;
 
 function delay<T>(value: T): Promise<T> {
@@ -34,12 +35,26 @@ export async function getToday(): Promise<TodayData> {
   });
 }
 
-export async function completeTask(taskId: string): Promise<{ task: Task; companion: CompanionState }> {
+export async function completeTask(
+  taskId: string,
+): Promise<{ task: Task; companion: CompanionState; xpAwarded: number }> {
+  const before = tasks.find((item) => item.id === taskId);
+  if (!before) throw new Error(`Unknown task: ${taskId}`);
+  if (before.isDone) return delay({ task: before, companion, xpAwarded: 0 });
   tasks = tasks.map((task) => (task.id === taskId ? { ...task, isDone: true } : task));
-  const task = tasks.find((item) => item.id === taskId);
-  if (!task) throw new Error(`Unknown task: ${taskId}`);
+  const task = { ...before, isDone: true };
   const nextCompanion = awardXp(TASK_COMPLETE_XP);
-  return delay({ task, companion: nextCompanion });
+  return delay({ task, companion: nextCompanion, xpAwarded: TASK_COMPLETE_XP });
+}
+
+/** Undo a completion: the server takes back exactly the XP it gave. */
+export async function undoCompleteTask(taskId: string): Promise<{ task: Task; companion: CompanionState }> {
+  const before = tasks.find((item) => item.id === taskId);
+  if (!before) throw new Error(`Unknown task: ${taskId}`);
+  if (!before.isDone) return delay({ task: before, companion });
+  tasks = tasks.map((task) => (task.id === taskId ? { ...task, isDone: false } : task));
+  const nextCompanion = awardXp(-TASK_COMPLETE_XP);
+  return delay({ task: { ...before, isDone: false }, companion: nextCompanion });
 }
 
 export async function getHabits(): Promise<HabitsData> {
@@ -63,16 +78,73 @@ export async function getSquad(): Promise<SquadData> {
 }
 
 export async function addTask(input: NewTaskInput): Promise<{ task: Task }> {
+  const isShared = input.shareWithSquad === true;
   const task: Task = {
     id: `task-${nextId++}`,
     title: input.title.trim(),
     isDone: false,
-    isShared: false,
+    isShared,
+    sharedByName: isShared ? planner.squadName : undefined,
     durationMinutes: input.durationMinutes,
     category: input.category,
+    goalName: input.goalName,
+    priority: input.priority,
   };
-  tasks = [...tasks, task];
+  const when = input.when ?? "today";
+  if (when === "today") {
+    tasks = [...tasks, task];
+  } else {
+    const listTask: PlannerListTask = {
+      id: task.id,
+      title: task.title,
+      detail: when === "tomorrow" ? "Tomorrow" : when === "noDate" ? "No date" : "Date to pick",
+      group: when === "tomorrow" ? "thisWeek" : "later",
+      isDone: false,
+      isShared,
+      hasDate: when !== "noDate",
+      badge: isShared ? "Shared" : input.priority === "high" ? "P1" : undefined,
+    };
+    planner = { ...planner, allTasks: [...planner.allTasks, listTask] };
+  }
   return delay({ task });
+}
+
+export async function getPlanner(): Promise<PlannerData> {
+  return delay(planner);
+}
+
+/** "Move to today" for yesterday's leftover: it joins today's list, no penalty. */
+export async function moveCarryOverToToday(): Promise<{ task: Task | null; planner: PlannerData }> {
+  const carry = planner.carryOver;
+  if (!carry) return delay({ task: null, planner });
+  const task: Task = { id: `task-${nextId++}`, title: carry.title, isDone: false, isShared: false, time: "13:00" };
+  tasks = [...tasks, task];
+  planner = { ...planner, carryOver: null };
+  return delay({ task, planner });
+}
+
+/** Pull a task from the full list into today. Its record stays; only its day changes. */
+export async function moveListTaskToToday(listTaskId: string): Promise<{ task: Task | null; planner: PlannerData }> {
+  const item = planner.allTasks.find((entry) => entry.id === listTaskId);
+  if (!item) return delay({ task: null, planner });
+  const task: Task = { id: `task-${nextId++}`, title: item.title, isDone: false, isShared: item.isShared, time: "13:00" };
+  tasks = [...tasks, task];
+  planner = { ...planner, allTasks: planner.allTasks.filter((entry) => entry.id !== listTaskId) };
+  return delay({ task, planner });
+}
+
+export async function rescheduleCarryOver(): Promise<PlannerData> {
+  const carry = planner.carryOver;
+  if (!carry) return delay(planner);
+  planner = {
+    ...planner,
+    carryOver: null,
+    allTasks: [
+      ...planner.allTasks,
+      { id: carry.id, title: carry.title, detail: "Date to pick", group: "later", isDone: false, isShared: false, hasDate: false },
+    ],
+  };
+  return delay(planner);
 }
 
 export async function addHabit(input: NewHabitInput): Promise<{ habit: Habit }> {
