@@ -990,7 +990,7 @@ export function EditHabit({
 
 // ------------------------------------------------------------------ Pause
 
-export function PauseHabit({ habit, todayIso, onPause, onCancel }: { habit: Habit; todayIso: string; onPause: (weeks: number | null) => Promise<void>; onCancel: () => void }) {
+export function PauseHabit({ habit, onPause, onCancel }: { habit: Habit; todayIso: string; onPause: (weeks: number | null) => Promise<void>; onCancel: () => void }) {
   const [length, setLength] = useState<"1" | "2" | "open">("1");
   return (
     <>
