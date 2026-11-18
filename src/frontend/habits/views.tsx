@@ -902,7 +902,7 @@ export function EditHabit({
         backLabel="Back to all habits"
         kicker={`Edit habit · ${habit.name}`}
         title="A rhythm that fits your life."
-        subtitle="Changes start tomorrow. History stays as it was."
+        subtitle="Your new schedule applies immediately. Past logs stay saved."
       />
       <Split
         left={
@@ -992,8 +992,6 @@ export function EditHabit({
 
 export function PauseHabit({ habit, todayIso, onPause, onCancel }: { habit: Habit; todayIso: string; onPause: (weeks: number | null) => Promise<void>; onCancel: () => void }) {
   const [length, setLength] = useState<"1" | "2" | "open">("1");
-  const tomorrow = new Date(`${todayIso}T12:00:00`);
-  tomorrow.setDate(tomorrow.getDate() + 1);
   return (
     <>
       <SubHeader
@@ -1001,7 +999,7 @@ export function PauseHabit({ habit, todayIso, onPause, onCancel }: { habit: Habi
         backLabel="Back to edit"
         kicker={`Pause · ${habit.name}`}
         title="Room to pause."
-        subtitle={`From tomorrow, ${tomorrow.getDate()} ${tomorrow.toLocaleDateString("en-GB", { month: "long" })}`}
+        subtitle="Pause starts when you confirm. Existing logs stay saved."
       />
       <Split
         left={
