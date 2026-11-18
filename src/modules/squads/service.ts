@@ -84,7 +84,7 @@ export async function listMembers(squadId: string, userId: string) {
   await activeMember(squadId, userId);
   return db().squadMember.findMany({
     where: { squadId, status: "ACTIVE" },
-    select: { userId: true, role: true, joinedAt: true, user: { select: { name: true, image: true } } },
+    select: { userId: true, role: true, joinedAt: true, user: { select: { name: true, image: true, profile: { select: { displayName: true } } } } },
     orderBy: { joinedAt: "asc" },
     take: 10,
   });
