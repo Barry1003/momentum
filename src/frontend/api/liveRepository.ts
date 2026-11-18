@@ -206,8 +206,7 @@ export async function updateHabit(id:string,changes:HabitChanges):Promise<Habit>
  return habitOf(h,historyOf(raw));
 }
 export async function pauseHabit(id:string,weeks:number|null):Promise<Habit>{
- if(weeks!==null)throw new Error("Timed pause is not available yet. Choose until resumed.");
- await request(`/api/habits/${encodeURIComponent(id)}/pause`,"POST");
+ await request(`/api/habits/${encodeURIComponent(id)}/pause`,"POST",{weeks});
  const raw=await workspace(),h=raw.habits.find(x=>x.id===id);
  if(!h)throw new Error("Habit not found");
  return habitOf(h,historyOf(raw));
