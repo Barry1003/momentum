@@ -253,3 +253,22 @@ export async function getPendingStageUp() {
 export async function acknowledgeStageUp(eventId: string): Promise<void> {
  await request("/api/xp/stage-up", "POST", {eventId});
 }
+
+// ---------------------------------------------------------------- focus
+
+/** Tell the server a round started, so its length can be checked when it ends. */
+export async function startFocusSession(sessionKey: string, input: { plannedMinutes: number; mode: "solo" | "squad"; taskId: string | null }): Promise<void> {
+ await request("/api/focus/sessions", "POST", { sessionKey, ...input });
+}
+export async function saveFocusSession(sessionKey: string, input: import("../mocks/types").SaveFocusInput): Promise<import("../mocks/types").SaveFocusResult> {
+ const result = await request<{ focusedSeconds: number; xpAwarded: number; weekFocusedMinutes: number; companion: CompanionState | null }>(
+  `/api/focus/sessions/${encodeURIComponent(sessionKey)}/finish`, "POST",
+  { focusedSeconds: Math.max(0, Math.floor(input.focusedSeconds)), plannedMinutes: input.plannedMinutes, mode: input.mode, taskId: input.taskId, stopReason: input.stopReason ?? null },
+ );
+ if (result.xpAwarded > 0 && typeof window !== "undefined") window.dispatchEvent(new Event("momentum:stage-up"));
+ return { ...result, companion: result.companion ?? { stage: "child", xp: 0, xpToNextStage: 400 } };
+}
+export async function quoteFocusXp(focusedSeconds: number): Promise<number> {
+ const result = await request<{ xp: number }>(`/api/focus/quote?seconds=${Math.max(0, Math.min(10800, Math.floor(focusedSeconds)))}`);
+ return result.xp;
+}
