@@ -34,6 +34,8 @@ model User {
   checkIns CheckIn[]
   achievements UserAchievement[]
   settings UserSettings?
+  accountRequests AccountRequest[]
+  accountDeletion AccountDeletion?
   growthEvents GrowthEvent[]
 
   @@map("user")
@@ -561,4 +563,37 @@ model UserSettings {
   user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
+}
+
+enum AccountRequestKind {
+  EMAIL_CHANGE
+  DELETE_ACCOUNT
+}
+
+// A one-time code for a sensitive account change. Only a hash of the code is stored.
+model AccountRequest {
+  id         String             @id @default(cuid())
+  userId     String
+  kind       AccountRequestKind
+  codeHash   String
+  newEmail   String?
+  attempts   Int                @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime           @default(now())
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind, createdAt])
+  @@map("account_request")
+}
+
+// A scheduled deletion. Nothing is deleted when this is created; it can be cancelled until then.
+model AccountDeletion {
+  userId       String    @id
+  scheduledFor DateTime
+  requestedAt  DateTime  @default(now())
+  cancelledAt  DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account_deletion")
 }
