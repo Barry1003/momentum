@@ -1,4 +1,7 @@
 import "server-only";
+import { appendXp } from "@/modules/xp/service";
+import { XP } from "@/modules/xp/config";
+import { currentRun, isScheduledOn } from "@/frontend/mocks/habitRules";
 import { getPrisma } from "@/db/client";
 import { SquadError } from "@/modules/squads/policy";
 import { activeMember } from "@/modules/squads/service";
@@ -75,31 +78,97 @@ async function validateLogDate(userId: string, date: string) {
   if (date > localToday) throw new SquadError("FUTURE_DATE", 400, "Cannot record future habit progress");
 }
 
+/** Return an ISO day for a stored DATE without server-timezone drift. */
+const day = (date: Date) => date.toISOString().slice(0, 10);
+
 export async function logHabit(id: string, userId: string, date: string, value: number) {
   const habit = await getHabit(id, userId);
-  if (habit.status !== "ACTIVE") {
-    const today = new Date().toISOString().slice(0, 10);
-    if (!habit.pausedUntil || habit.pausedUntil.toISOString().slice(0, 10) >= today) {
-      throw new SquadError("HABIT_PAUSED", 409, "Resume this habit to log progress");
-    }
-    await db().habit.update({ where: { id }, data: { status: "ACTIVE", pausedAt: null, pausedUntil: null } });
-  }
   await validateLogDate(userId, date);
-  const completed = isCompleted(habit.targetType, habit.targetValue, value);
-  const log = await db().habitLog.upsert({
-    where: { habitId_date: { habitId: id, date: asUtcDate(date) } },
-    create: { habitId: id, userId, date: asUtcDate(date), value, completed },
-    update: { value, completed, loggedAt: new Date() },
-    select: { id: true, date: true, value: true, completed: true, loggedAt: true },
+  if (habit.status !== "ACTIVE")
+    throw new SquadError("HABIT_PAUSED", 409, "Resume this habit to log progress");
+  if (!isScheduledOn({
+    scheduleDays: habit.scheduleDays, targetCount: habit.targetValue,
+    startsOn: habit.startsOn ? day(habit.startsOn) : undefined,
+  }, date)) throw new SquadError("UNSCHEDULED_DAY", 409, "Habit is not scheduled for that day");
+  if (value > habit.targetValue)
+    throw new SquadError("INVALID_INPUT", 400, "Habit progress cannot exceed its target");
+  return db().$transaction(async tx => {
+    // All writes for the same habit are serialized before examining the previous value.
+    await tx.$queryRaw`SELECT id FROM "habit" WHERE id = ${id} FOR UPDATE`;
+    const previous = await tx.habitLog.findUnique({
+      where: { habitId_date: { habitId: id, date: asUtcDate(date) } },
+    });
+    const oldValue = previous?.value ?? 0;
+    if (oldValue === value) {
+      return { log: previous, xpAwarded: 0, moment: null };
+    }
+    const nextRevision = (previous?.revision ?? 0) + 1;
+    const completed = isCompleted(habit.targetType, habit.targetValue, value);
+    const log = await tx.habitLog.upsert({
+      where: { habitId_date: { habitId: id, date: asUtcDate(date) } },
+      create: { habitId: id, userId, date: asUtcDate(date), value, completed, revision: nextRevision },
+      update: { value, completed, revision: nextRevision, loggedAt: new Date() },
+    });
+    // Each increment is worth five XP, matching the mock repository. Decrements reverse it.
+    const amount = (value - oldValue) * XP.habitUnit;
+    const earned = await appendXp(tx, userId, {
+      source: "HABIT", sourceId: log.id,
+      key: `habit:${log.id}:rev:${nextRevision}`, amount,
+    });
+    let xpAwarded = earned.xpAwarded;
+    let moment: { habitId: string; habitName: string; days: number; xpAwarded: number } | null = null;
+    if (completed && !previous?.completed) {
+      const logs = await tx.habitLog.findMany({
+        where: { habitId: id, date: { lte: asUtcDate(date) } },
+        select: { date: true, value: true }, orderBy: { date: "desc" }, take: 400,
+      });
+      const history = Object.fromEntries(logs.map(row => [day(row.date), row.value]));
+      const streak = currentRun({
+        scheduleDays: habit.scheduleDays, targetCount: habit.targetValue,
+        startsOn: habit.startsOn ? day(habit.startsOn) : undefined,
+      }, history, date);
+      const bonus = XP.habitMoments[streak] ?? 0;
+      if (bonus) {
+        // One consistency milestone per habit/date, even if its log is later edited.
+        const key = `habit-moment:${id}:${date}:${streak}`;
+        const oldBonus = await tx.xpEvent.findUnique({
+          where: { userId_idempotencyKey: { userId, idempotencyKey: key } },
+          select: { id: true },
+        });
+        if (!oldBonus) {
+          const extra = await appendXp(tx, userId, {
+            source: "HABIT_MOMENT", sourceId: log.id, key, amount: bonus,
+          });
+          xpAwarded += extra.xpAwarded;
+          moment = { habitId: id, habitName: habit.name, days: streak, xpAwarded: bonus };
+        }
+      }
+    }
+    return { log, xpAwarded, moment };
   });
-  // No XP award yet. F06 will handle first-time completed log sources transactionally.
-  return { log, xpAwarded: 0 };
 }
 
 export async function clearHabitLog(id: string, userId: string, date: string) {
-  await getHabit(id, userId);
-  await db().habitLog.deleteMany({ where: { habitId: id, date: asUtcDate(date) } });
-  return { cleared: true };
+  const habit = await getHabit(id, userId);
+  await validateLogDate(userId, date);
+  return db().$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "habit" WHERE id = ${id} FOR UPDATE`;
+    const previous = await tx.habitLog.findUnique({
+      where: { habitId_date: { habitId: id, date: asUtcDate(date) } },
+    });
+    if (!previous) return { cleared: true };
+    // Set value to zero but retain the log row so revision ids cannot be recycled.
+    const revision = previous.revision + 1;
+    await tx.habitLog.update({
+      where: { id: previous.id },
+      data: { value: 0, completed: false, revision, loggedAt: new Date() },
+    });
+    await appendXp(tx, userId, {
+      source: "HABIT", sourceId: previous.id,
+      key: `habit:${previous.id}:rev:${revision}`, amount: -previous.value * XP.habitUnit,
+    });
+    return { cleared: true };
+  });
 }
 
 export async function habitHistory(userId: string, habitId?: string) {
