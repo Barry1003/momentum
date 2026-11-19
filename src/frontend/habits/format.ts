@@ -23,6 +23,10 @@ export function todayLine(habit: Habit): string {
   if (habit.kind === "target") {
     return `${habit.completedCount} of ${habit.targetCount} ${habit.unit ?? "times"}`;
   }
+  if (habit.kind === "timer") {
+    const length = habit.detail ?? `${habit.targetCount} min`;
+    return done ? `${length} · done` : length;
+  }
   if (done) return habit.detail ? `${habit.detail} · done` : "Done";
   return habit.detail ?? "Tap to check";
 }

@@ -10,7 +10,7 @@ import {
   resumeHabit,
   updateHabit,
   type HabitChanges,
-} from "../mocks/repository";
+} from "../api/liveRepository";
 import type { ConsistencyMoment, HabitTracker, NewHabitInput } from "../mocks/types";
 
 export interface UseHabitTrackerResult {
@@ -37,7 +37,7 @@ export function useHabitTracker(): UseHabitTrackerResult {
   const [data, setData] = useState<HabitTracker | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [pending, setPending] = useState<Record<string, number>>({});
+  const pending: Record<string, number> = {};
   const [isOffline, setIsOffline] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -72,31 +72,11 @@ export function useHabitTracker(): UseHabitTrackerResult {
     };
   }, []);
 
-  // Send what was logged offline once the connection is back.
-  useEffect(() => {
-    if (isOffline) return;
-    const entries = Object.entries(pending);
-    if (entries.length === 0) return;
-    let cancelled = false;
-    void (async () => {
-      for (const [habitId, count] of entries) {
-        for (let i = 0; i < count; i += 1) await incrementHabit(habitId);
-      }
-      if (cancelled) return;
-      setPending({});
-      setData(await getHabitTracker());
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isOffline, pending]);
-
   const log = useCallback(
     async (habitId: string) => {
       if (!online()) {
         setIsOffline(true);
-        setPending((queued) => ({ ...queued, [habitId]: (queued[habitId] ?? 0) + 1 }));
-        return null;
+        throw new Error("You are offline. Habit logging needs a connection until offline sync is implemented.");
       }
       const { moment } = await incrementHabit(habitId);
       await refresh();

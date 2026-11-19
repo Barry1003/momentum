@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { addHabit, addTask, completeTask, getToday, incrementHabit, undoCompleteTask } from "../mocks/repository";
+import { addHabit, addTask, completeTask, getToday, incrementHabit, undoCompleteTask } from "../api/liveRepository";
 import type { NewHabitInput, NewTaskInput, Task, TodayData } from "../mocks/types";
 
 export interface UseTodayResult {

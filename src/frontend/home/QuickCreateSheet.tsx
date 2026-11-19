@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Button, Sheet } from "../components";
+import { createGoal } from "../api/liveRepository";
 import { cn } from "../lib/cn";
-import { createGoal } from "../mocks/repository";
 import type { NewHabitInput, NewTaskInput } from "../mocks/types";
 import { CheckIcon, PlayIcon, SparkleIcon, WaterIcon } from "./icons";
 
@@ -62,7 +62,7 @@ export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddH
   const [title, setTitle] = useState("");
   const [isToday, setIsToday] = useState(true);
   const [duration, setDuration] = useState<number | null>(30);
-  const [linkGoal, setLinkGoal] = useState(true);
+
   const [isPrivate, setIsPrivate] = useState(true);
   const [repeats, setRepeats] = useState(false);
   const [isPriority, setIsPriority] = useState(false);
@@ -82,17 +82,22 @@ export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddH
         await onAddTask({
           title: trimmed,
           durationMinutes: duration ?? undefined,
-          category: linkGoal ? "Confident developer" : undefined,
+          when: isToday ? "today" : "tomorrow",
+          shareWithSquad: !isPrivate,
+          priority: isPriority ? "high" : undefined,
+          repeats: repeats ? "daily" : "never",
         });
       } else if (kind === "habit") {
         await onAddHabit({ name: trimmed, targetCount: habitTarget });
       } else if (kind === "goal") {
-        const goal = await createGoal({ title: trimmed });
-        router.push(`/goals/${goal.id}`);
+        await createGoal(trimmed, !isPrivate);
+        router.push("/planner?view=goals");
       } else {
         router.push("/focus");
       }
       onClose();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save. Please retry.");
     } finally {
       setIsSaving(false);
     }
@@ -168,7 +173,7 @@ export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddH
               pressed={duration !== null}
               onToggle={() => setDuration((value) => (value === null ? 15 : value === 15 ? 30 : value === 30 ? 45 : null))}
             />
-            <ToggleChip label="Goal: Confident developer" pressed={linkGoal} onToggle={() => setLinkGoal((value) => !value)} />
+
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             <ToggleChip label={isPrivate ? "Private" : "Shared"} pressed={!isPrivate} onToggle={() => setIsPrivate((value) => !value)} />
@@ -176,7 +181,7 @@ export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddH
             <ToggleChip label="Priority" pressed={isPriority} onToggle={() => setIsPriority((value) => !value)} />
           </div>
           <p className="mt-3 rounded-note bg-cream px-4 py-2.5 font-heading text-meta text-accent-strong">
-            Finishing this earns XP for Ari.
+            Your progress is saved to your account. XP rewards are coming later.
           </p>
         </>
       ) : null}

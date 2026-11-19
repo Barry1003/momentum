@@ -114,6 +114,7 @@ export function PlannerScreen({ today }: { today: UseTodayResult }) {
     body = <AddTaskView
         squadName={squadName === "your squad" ? "My squad" : squadName}
         initialTitle={(params.get("title") ?? "").slice(0, 120)}
+        goals={planner.data?.goals ?? []}
         onAdd={addTask}
         onCancel={() => router.push("/planner")}
       />;
@@ -167,7 +168,7 @@ export function PlannerScreen({ today }: { today: UseTodayResult }) {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {body}
       <p role="status" className="mt-6 font-heading text-meta text-text-muted">
-        Preview: planner tasks, goals and XP here are examples, not saved account data yet.
+        Tasks and goals are saved to your account. XP and recurring schedules are not yet enabled.
       </p>
       {celebration && companion ? (
         <TaskDoneSheet

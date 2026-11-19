@@ -147,7 +147,8 @@ export function AriTile({ art, label, title, body, children }: { art: StaticImag
 // ------------------------------------------------------------------ Today
 
 function TodayRow({ habit, todayIso, pending, onLog, onResume }: { habit: Habit; todayIso: string; pending: number; onLog: () => void; onResume: () => void }) {
-  const count = Math.min(habit.targetCount, habit.completedCount + pending);
+  // A timer is logged in full with one "Done"; counted habits go up one tap at a time.
+  const count = habit.kind === "timer" && pending > 0 ? habit.targetCount : Math.min(habit.targetCount, habit.completedCount + pending);
   const done = count >= habit.targetCount;
   const paused = isPausedNow(habit, todayIso) && !habit.isScheduledToday;
   const notYet = habit.startsOn && habit.startsOn > todayIso;
@@ -742,8 +743,9 @@ export function NewHabit({
       if (!Number.isInteger(targetCount) || targetCount < 2 || targetCount > 99) return setError("Targets are whole numbers from 2 to 99.");
     }
     if (kind === "timer") {
-      const value = Number(minutes);
-      if (!Number.isInteger(value) || value < 1 || value > 240) return setError("Timers are 1 to 240 minutes.");
+      // The server stores a timer's length as its target in minutes; one "Done" logs it in full.
+      targetCount = Number(minutes);
+      if (!Number.isInteger(targetCount) || targetCount < 1 || targetCount > 240) return setError("Timers are 1 to 240 minutes.");
     }
     if (reminderOn && !/^([01]\d|2[0-3]):[0-5]\d$/.test(reminder)) return setError("Reminder time looks off. Use HH:MM.");
     const goal = goalOptions[goalIndex];
@@ -753,7 +755,7 @@ export function NewHabit({
         name: trimmed.slice(0, 60),
         kind,
         targetCount,
-        unit: kind === "target" ? unit.trim().slice(0, 20) || "times" : "",
+        unit: kind === "target" ? unit.trim().slice(0, 20) || "times" : kind === "timer" ? "min" : "",
         detail: kind === "timer" ? `${Number(minutes)} min` : undefined,
         scheduleDays,
         reminderTime: reminderOn ? reminder : null,
@@ -889,7 +891,7 @@ export function EditHabit({
   const [editingTarget, setEditingTarget] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const unit = habit.kind === "target" ? habit.unit ?? "times" : "time a day";
+  const unit = habit.kind === "timer" ? "minutes" : habit.kind === "target" ? habit.unit ?? "times" : "time a day";
 
   async function save() {
     const value = Number(target);
@@ -905,7 +907,7 @@ export function EditHabit({
         backLabel="Back to all habits"
         kicker={`Edit habit · ${habit.name}`}
         title="A rhythm that fits your life."
-        subtitle="Changes start tomorrow. History stays as it was."
+        subtitle="Your new schedule applies immediately. Past logs stay saved."
       />
       <Split
         left={
@@ -993,10 +995,8 @@ export function EditHabit({
 
 // ------------------------------------------------------------------ Pause
 
-export function PauseHabit({ habit, todayIso, onPause, onCancel }: { habit: Habit; todayIso: string; onPause: (weeks: number | null) => Promise<void>; onCancel: () => void }) {
+export function PauseHabit({ habit, onPause, onCancel }: { habit: Habit; todayIso: string; onPause: (weeks: number | null) => Promise<void>; onCancel: () => void }) {
   const [length, setLength] = useState<"1" | "2" | "open">("1");
-  const tomorrow = new Date(`${todayIso}T12:00:00`);
-  tomorrow.setDate(tomorrow.getDate() + 1);
   return (
     <>
       <SubHeader
@@ -1004,7 +1004,7 @@ export function PauseHabit({ habit, todayIso, onPause, onCancel }: { habit: Habi
         backLabel="Back to edit"
         kicker={`Pause · ${habit.name}`}
         title="Room to pause."
-        subtitle={`From tomorrow, ${tomorrow.getDate()} ${tomorrow.toLocaleDateString("en-GB", { month: "long" })}`}
+        subtitle="Pause starts when you confirm. Existing logs stay saved."
       />
       <Split
         left={
