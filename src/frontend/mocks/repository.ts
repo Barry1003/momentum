@@ -2,7 +2,7 @@ import { mockAchievements, mockCompanion, mockFocusLobby, mockSquadMoments, mock
 import { MOMENT_XP, addDays, currentRun, isScheduledOn, isoDate } from "./habitRules";
 import { mockGoals } from "./goalsData";
 import { STAGE_EXTRAS, STAGE_THRESHOLDS, nextStageState } from "./progressRules";
-import type { AcceptHabitOptions, AuditArea, GridAction, GrowthStudioState, AccountPreview, PrivacySettings, ProfileDetails, QuietHours, ReminderSettings, GrowthStage, Achievement, CheckInInput, CompanionOverview, ProfileSummary, StudioOption, StudioState, CheckInStatus, GoalSnapshot, ProgressSummary, SquadProgress, StageUpEvent, CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
+import type { BusyBlock, Quadrant, ReviewChange, ReviewState, SchedulerItem, SlotCheck, AcceptHabitOptions, AuditArea, GridAction, GrowthStudioState, AccountPreview, PrivacySettings, ProfileDetails, QuietHours, ReminderSettings, GrowthStage, Achievement, CheckInInput, CompanionOverview, ProfileSummary, StudioOption, StudioState, CheckInStatus, GoalSnapshot, ProgressSummary, SquadProgress, StageUpEvent, CompanionState, ConsistencyMoment, GoalDetail, GoalTask, PlannerGoal, TaskPriority, TaskWhen, FocusLobby, Habit, HabitTracker, SaveFocusInput, SaveFocusResult, HabitsData, NewHabitInput, NewTaskInput, NotificationItem, PlannerData, PlannerListTask, SquadData, Task, TodayData } from "./types";
 
 const MOCK_LATENCY_MS = 250;
 const TASK_COMPLETE_XP = 10;
@@ -106,11 +106,16 @@ export async function acknowledgeStageUp(): Promise<void> {
   return delay(undefined);
 }
 
+/** A task belongs to today unless the scheduler moved it to a later day. */
+function onToday(task: Task): boolean {
+  return !task.scheduledDate || task.scheduledDate <= isoDate(new Date());
+}
+
 export async function getToday(): Promise<TodayData> {
   return delay({
     date: new Date().toISOString().slice(0, 10),
     companion,
-    tasks,
+    tasks: tasks.filter((task) => onToday(task)),
     habits: visibleHabits().filter((habit) => habit.isScheduledToday),
     isCheckInPromptVisible: true,
   });
@@ -1078,7 +1083,7 @@ const studio: GrowthStudioState & { nextAction: number } = {
     ],
   },
   suggestedAreas: [],
-  reviewOpensInDays: 9,
+  reviewOpensInDays: 0,
   nextAction: 100,
 };
 
@@ -1244,4 +1249,198 @@ export async function acceptAllRhythms(): Promise<GrowthStudioState> {
     await acceptGridAction(action.id, action.rhythm === "daily" && action.addAs === "habit" ? "habit" : "task");
   }
   return delay(studioView());
+}
+
+// ---------------------------------------------------------------- scheduler (Make room)
+
+const quadrants: Record<string, Quadrant> = {};
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function toMinutes(time: string): number {
+  return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+}
+function fromMinutes(total: number): string {
+  const clamped = Math.max(0, Math.min(24 * 60 - 1, total));
+  return `${String(Math.floor(clamped / 60)).padStart(2, "0")}:${String(clamped % 60).padStart(2, "0")}`;
+}
+
+function defaultQuadrant(task: Task): Quadrant {
+  if (task.time) return "doNext";
+  return task.priority === "low" ? "reconsider" : "planTime";
+}
+
+function schedulerItem(task: Task): SchedulerItem {
+  const minutes = task.durationMinutes ?? 20;
+  const parts = [task.time ? `${task.time}` : null, `${minutes} min`, task.repeatsDaily ? "daily" : task.scheduledDate && task.scheduledDate !== todayIso() ? task.scheduledDate : "today"].filter(Boolean);
+  return {
+    taskId: task.id,
+    title: task.title,
+    minutes,
+    detail: task.time ? parts.join(" · ") : `Accepted · unscheduled`,
+    quadrant: quadrants[task.id] ?? defaultQuadrant(task),
+    time: task.time ?? null,
+    scheduledDate: task.scheduledDate ?? null,
+    repeatsDaily: task.repeatsDaily === true,
+    goalName: task.goalName ?? null,
+    priority: task.priority ?? "medium",
+    fromGrowthStudio: Boolean(studio.grid?.actions.some((action) => action.status === "accepted" && action.title === task.title)),
+  };
+}
+
+export async function getScheduler(): Promise<{ items: SchedulerItem[]; drafts: { id: string; title: string; area: string }[] }> {
+  const items = tasks.filter((task) => !task.isDone).map(schedulerItem);
+  const drafts = (studio.grid?.actions ?? [])
+    .filter((action) => action.status !== "accepted")
+    .map((action) => ({ id: action.id, title: action.title, area: studio.grid?.areas.find((area) => area.id === action.areaId)?.name ?? "" }));
+  return delay({ items, drafts });
+}
+
+/** Moving between boxes only changes the label; nothing is rescheduled. */
+export async function setQuadrant(taskId: string, quadrant: Quadrant): Promise<SchedulerItem> {
+  const task = tasks.find((item) => item.id === taskId);
+  if (!task) throw new Error("That task isn’t on your list any more.");
+  quadrants[taskId] = quadrant;
+  return delay(schedulerItem(task));
+}
+
+function blocksOn(dateIso: string, excludeTaskId: string | null): BusyBlock[] {
+  const blocks: BusyBlock[] = [];
+  for (const task of tasks) {
+    if (task.id === excludeTaskId || !task.time || task.isDone) continue;
+    const start = task.scheduledDate ?? todayIso();
+    const onDay = task.repeatsDaily ? start <= dateIso : start === dateIso;
+    if (!onDay) continue;
+    blocks.push({ title: task.title, from: task.time, to: fromMinutes(toMinutes(task.time) + (task.durationMinutes ?? 20)) });
+  }
+  const weekday = (new Date(`${dateIso}T12:00:00`).getDay() + 6) % 7;
+  if (weekday === 0 || weekday === 2) blocks.push({ title: `${planner.squadName} focus`, from: "14:00", to: "14:25", note: "squad" });
+  return blocks.sort((a, b) => a.from.localeCompare(b.from));
+}
+
+export async function getBusy(dateIso: string, taskId: string | null): Promise<BusyBlock[]> {
+  return delay(blocksOn(dateIso, taskId));
+}
+
+/** Days in a month that already have plans, for the dots on the calendar. */
+export async function getBusyDays(year: number, month: number): Promise<string[]> {
+  const days: string[] = [];
+  const last = new Date(year, month + 1, 0).getDate();
+  for (let day = 1; day <= last; day += 1) {
+    const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    if (blocksOn(iso, null).length) days.push(iso);
+  }
+  return delay(days);
+}
+
+function check(taskId: string, dateIso: string, time: string, minutes: number): SlotCheck {
+  if (!TIME_RE.test(time)) return { ok: false, reason: "invalid", conflict: null, suggestion: suggestSlot(taskId, dateIso, minutes) };
+  const start = toMinutes(time);
+  const end = start + minutes;
+  if (end > 24 * 60) return { ok: false, reason: "invalid", conflict: null, suggestion: suggestSlot(taskId, dateIso, minutes) };
+  const clash = blocksOn(dateIso, taskId).find((block) => start < toMinutes(block.to) && toMinutes(block.from) < end) ?? null;
+  return clash ? { ok: false, reason: "conflict", conflict: clash, suggestion: suggestSlot(taskId, dateIso, minutes) } : { ok: true, reason: null, conflict: null, suggestion: null };
+}
+
+function suggestSlot(taskId: string, dateIso: string, minutes: number): string | null {
+  for (const candidate of ["17:30", "07:00", "12:30", "19:00", "08:00", "16:00"]) {
+    const start = toMinutes(candidate);
+    const clash = blocksOn(dateIso, taskId).some((block) => start < toMinutes(block.to) && toMinutes(block.from) < start + minutes);
+    if (!clash) return candidate;
+  }
+  return null;
+}
+
+export async function checkSlot(taskId: string, dateIso: string, time: string): Promise<SlotCheck> {
+  const task = tasks.find((item) => item.id === taskId);
+  return delay(check(taskId, dateIso, time, task?.durationMinutes ?? 20));
+}
+
+/**
+ * Give a task a day and time. Checked again here, so a stale screen can never
+ * double-book. Past days are never changed; repeating starts on the chosen day.
+ */
+export async function scheduleTask(taskId: string, input: { date: string; time: string; repeatsDaily: boolean }): Promise<SchedulerItem> {
+  const task = tasks.find((item) => item.id === taskId);
+  if (!task) throw new Error("That task isn’t on your list any more.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || input.date < todayIso()) throw new Error("Pick today or a later day.");
+  const result = check(taskId, input.date, input.time, task.durationMinutes ?? 20);
+  if (!result.ok) throw new Error(result.reason === "conflict" ? `That overlaps ${result.conflict?.title}.` : "Use a 24-hour time, like 17:30.");
+  const updated: Task = { ...task, time: input.time, scheduledDate: input.date === todayIso() && !input.repeatsDaily ? undefined : input.date, repeatsDaily: input.repeatsDaily };
+  tasks = tasks.map((item) => (item.id === taskId ? updated : item));
+  quadrants[taskId] = "doNext";
+  return delay(schedulerItem(updated));
+}
+
+// ---------------------------------------------------------------- 15-day review
+
+const REVIEW_XP = 40;
+const review: ReviewState = {
+  cycle: 1,
+  from: "2026-11-01",
+  to: "2026-11-15",
+  status: "open",
+  stats: { tried: 3, total: 5, daysActive: 11, xpEarned: 420 },
+  tried: [
+    { title: "Review JS closures", detail: "9 of 15 days" },
+    { title: "Read 10 pages", detail: "7 of 15 days" },
+    { title: "Walk for 20 minutes", detail: "4 of 15 days" },
+  ],
+  notTried: [
+    { title: "Ask for feedback", detail: "Weekly" },
+    { title: "Set up workspace", detail: "Once" },
+  ],
+  obstacles: [],
+  context: "",
+  suggestions: [
+    { id: "rc-1", kind: "keep", title: "Review JS closures", detail: "25 min. The routine that helped." },
+    { id: "rc-2", kind: "smaller", title: "Walk for 10 minutes", detail: "Instead of 20 on busy evenings" },
+    { id: "rc-3", kind: "new", title: "Ask for feedback weekly", detail: "A draft change, not a new task yet" },
+  ],
+  xpAwarded: 0,
+  nextFrom: "2026-11-16",
+  nextTo: "2026-11-30",
+};
+
+export const OBSTACLES = ["Time", "Energy", "Unclear next step", "Motivation", "Health", "Something else"];
+
+export async function getReview(): Promise<ReviewState> {
+  return delay(structuredClone(review));
+}
+
+/**
+ * Save the review once per cycle (XP once). "Smaller" and "new" changes become
+ * drafts in the grid; nothing reaches the plan until accepted. History is not rewritten.
+ */
+export async function saveReview(input: { obstacles: string[]; context: string; changes: ReviewChange[]; finish: boolean }): Promise<ReviewState> {
+  review.obstacles = input.obstacles.filter((item) => OBSTACLES.includes(item));
+  review.context = input.context.trim().slice(0, 280);
+  review.suggestions = input.changes
+    .map((change) => ({ ...change, title: change.title.trim().slice(0, 80), detail: change.detail.trim().slice(0, 120) }))
+    .filter((change) => change.title.length >= 2);
+  if (!input.finish || review.status === "saved") return delay(structuredClone(review));
+  const grid = studio.grid;
+  if (grid) {
+    const areaId = grid.areas.find((area) => !area.isDraft)?.id ?? grid.areas[0]?.id;
+    review.suggestions = review.suggestions.map((change) => {
+      if (change.kind === "keep" || !areaId) return change;
+      const minutes = Number(change.title.match(/(\d+)\s*min/)?.[1] ?? 20);
+      const action: GridAction = {
+        id: `ga-${studio.nextAction++}`,
+        areaId,
+        title: change.title,
+        minutes,
+        addAs: "task",
+        rhythm: /weekly/i.test(change.title) ? "weekly" : "daily",
+        status: "draft",
+        rhythmChangedByYou: false,
+      };
+      studio.grid = { ...(studio.grid ?? grid), actions: [...(studio.grid ?? grid).actions, action] };
+      return { ...change, draftActionId: action.id };
+    });
+  }
+  review.status = "saved";
+  review.xpAwarded = REVIEW_XP;
+  awardXp(REVIEW_XP);
+  studio.reviewOpensInDays = 15;
+  return delay(structuredClone(review));
 }

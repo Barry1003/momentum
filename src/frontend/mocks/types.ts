@@ -23,6 +23,9 @@ export interface Task {
   /** Short name of the goal this task feeds, e.g. "Confident developer". */
   goalName?: string;
   priority?: TaskPriority;
+  /** Set by the scheduler: the day it starts, and whether it repeats daily from then. */
+  scheduledDate?: string;
+  repeatsDaily?: boolean;
 }
 
 export type TaskPriority = "high" | "medium" | "low";
@@ -492,4 +495,60 @@ export interface AcceptHabitOptions {
   days: number[];
   targetMinutes: number;
   reminderTime: string | null;
+}
+
+export type Quadrant = "doNext" | "planTime" | "reconsider" | "leaveRoom";
+
+export interface SchedulerItem {
+  taskId: string;
+  title: string;
+  minutes: number;
+  detail: string;
+  quadrant: Quadrant;
+  time: string | null;
+  scheduledDate: string | null;
+  repeatsDaily: boolean;
+  goalName: string | null;
+  priority: TaskPriority;
+  fromGrowthStudio: boolean;
+}
+
+export interface BusyBlock {
+  title: string;
+  from: string;
+  to: string;
+  note?: string;
+}
+
+export interface SlotCheck {
+  ok: boolean;
+  reason: "invalid" | "conflict" | null;
+  conflict: BusyBlock | null;
+  /** A free start time the server suggests instead. */
+  suggestion: string | null;
+}
+
+export interface ReviewState {
+  cycle: number;
+  from: string;
+  to: string;
+  status: "open" | "saved";
+  stats: { tried: number; total: number; daysActive: number; xpEarned: number };
+  tried: { title: string; detail: string }[];
+  notTried: { title: string; detail: string }[];
+  obstacles: string[];
+  context: string;
+  suggestions: ReviewChange[];
+  xpAwarded: number;
+  nextFrom: string;
+  nextTo: string;
+}
+
+export interface ReviewChange {
+  id: string;
+  kind: "keep" | "smaller" | "new";
+  title: string;
+  detail: string;
+  /** For smaller/new: the grid draft it became after saving. */
+  draftActionId?: string | null;
 }
