@@ -20,10 +20,9 @@ export function scheduleLabel(days: number[] | undefined): string {
 /** Line under a habit on Today. */
 export function todayLine(habit: Habit): string {
   const done = habit.completedCount >= habit.targetCount;
-  if (habit.kind === "target" || habit.targetCount > 1) {
+  if (habit.kind === "target") {
     return `${habit.completedCount} of ${habit.targetCount} ${habit.unit ?? "times"}`;
   }
-  if (habit.kind === "timer") return done ? `${habit.targetCount} min · done` : `${habit.targetCount} min`;
   if (done) return habit.detail ? `${habit.detail} · done` : "Done";
   return habit.detail ?? "Tap to check";
 }

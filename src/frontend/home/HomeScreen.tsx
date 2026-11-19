@@ -194,7 +194,7 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
       <FirstDayActions
         onAddTask={() => openQuickCreate("task")}
         onAddHabit={() => openQuickCreate("habit")}
-        onDirection={() => router.push("/planner?view=growth-studio")}
+        onDirection={() => router.push("/growth")}
       />
     );
   } else if (mode === "quiet") {
@@ -214,7 +214,7 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
             setDismissedQuiet(true);
           }}
           onTask={() => setDismissedQuiet(true)}
-          onCheckIn={() => showToast("Check-ins arrive with the Progress screens.")}
+          onCheckIn={() => router.push("/check-in")}
           onSayHi={() => {
             sayHello();
             setDismissedQuiet(true);

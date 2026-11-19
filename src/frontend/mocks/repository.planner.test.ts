@@ -122,3 +122,101 @@ describe("goals", () => {
     expect(next.tasks[0].todayTaskId).toBeDefined();
   });
 });
+
+describe("progress and check-ins", () => {
+  it("never counts the future and keeps ranges ordered", async () => {
+    const { getProgress } = await import("./repository");
+    const summary = await getProgress("2999-01-01", "2026-01-01");
+    expect(summary.from <= summary.to).toBe(true);
+    expect(summary.to <= new Date().toISOString().slice(0, 10)).toBe(true);
+  });
+
+  it("awards check-in XP once a day", async () => {
+    const { saveCheckIn, getCheckInStatus } = await import("./repository");
+    const input = { mood: "good" as const, effort: "steady" as const, win: "Closures", obstacle: "", shareCheckedIn: true };
+    expect((await saveCheckIn(input)).xpAwarded).toBe(10);
+    expect((await saveCheckIn(input)).xpAwarded).toBe(0);
+    expect((await getCheckInStatus()).doneToday).toBe(true);
+  });
+
+  it("celebrates a new stage once and never takes it back", async () => {
+    const { getPendingStageUp, acknowledgeStageUp, saveFocusSession, undoCompleteTask, completeTask, getToday } = await import("./repository");
+    for (let i = 0; i < 70 && !(await getPendingStageUp()); i += 1) {
+      await saveFocusSession(`grow-${i}`, { taskId: null, focusedSeconds: 3600, plannedMinutes: 60, mode: "solo" });
+    }
+    const event = await getPendingStageUp();
+    expect(event?.stage).toBe("youngAdult");
+    await acknowledgeStageUp();
+    expect(await getPendingStageUp()).toBeNull();
+    const open = (await getToday()).tasks.find((task) => !task.isDone);
+    if (open) {
+      await completeTask(open.id);
+      const undone = await undoCompleteTask(open.id);
+      expect(undone.companion.stage).toBe("youngAdult");
+    }
+  });
+});
+
+describe("achievements and studio", () => {
+  it("keeps achievements private until shared", async () => {
+    const { getAchievement, setAchievementShared } = await import("./repository");
+    expect((await getAchievement("deep-diver"))?.isShared).toBe(false);
+    expect((await setAchievementShared("deep-diver", true))?.isShared).toBe(true);
+    expect((await setAchievementShared("bookworm", true))?.isShared).toBe(false);
+  });
+
+  it("only applies looks the person has", async () => {
+    const { saveLook } = await import("./repository");
+    const studio = await saveLook({ room: "midnight", plinth: "mint", name: "Ari" });
+    expect(studio.room).not.toBe("midnight");
+    expect(studio.plinth).toBe("mint");
+    const sage = await saveLook({ room: "sage" });
+    expect(sage.room).toBe("sage");
+  });
+});
+
+describe("settings and account", () => {
+  it("validates handles and quiet hours", async () => {
+    const { saveProfileDetails, saveQuietHours } = await import("./repository");
+    await expect(saveProfileDetails({ handle: "@zara", intention: "" })).rejects.toThrow();
+    await expect(saveProfileDetails({ handle: "a b", intention: "" })).rejects.toThrow();
+    expect((await saveProfileDetails({ handle: "@Ari_Builds", intention: "x" })).handle).toBe("ari_builds");
+    await expect(saveQuietHours({ enabled: true, from: "22:00", to: "22:00", days: "everyDay", customDays: [] })).rejects.toThrow();
+  });
+
+  it("needs the code, the word and no solo squad to schedule deletion", async () => {
+    const { requestAccountDeletion, previewTransferOwnership } = await import("./repository");
+    await expect(requestAccountDeletion("482913", "DELETE")).rejects.toThrow();
+    await previewTransferOwnership();
+    await expect(requestAccountDeletion("000000", "DELETE")).rejects.toThrow();
+    await expect(requestAccountDeletion("482913", "delete")).rejects.toThrow();
+    expect((await requestAccountDeletion("482913", "DELETE")).deletionScheduledFor).not.toBeNull();
+  });
+});
+
+describe("growth studio", () => {
+  it("keeps ratings 1–5 and moves on to the next area", async () => {
+    const { rateArea } = await import("./repository");
+    await expect(rateArea("health", 7, "")).rejects.toThrow();
+    const state = await rateArea("health", 3, "  ok  ");
+    expect(state.areas.find((area) => area.id === "health")?.note).toBe("ok");
+    expect(state.lastPausedAreaId).toBe("money");
+  });
+
+  it("accepts a draft into the plan once, never twice", async () => {
+    const { acceptGridAction, getHabits } = await import("./repository");
+    const before = (await getHabits()).habits.length;
+    await acceptGridAction("ga-3", "habit", { days: [0, 1, 2, 3, 4, 5, 6], targetMinutes: 20, reminderTime: null });
+    const again = await acceptGridAction("ga-3", "habit", { days: [0, 1, 2, 3, 4, 5, 6], targetMinutes: 20, reminderTime: null });
+    expect((await getHabits()).habits.length).toBe(before + 1);
+    expect(again.grid?.actions.find((action) => action.id === "ga-3")?.status).toBe("accepted");
+  });
+
+  it("limits an area to 8 actions", async () => {
+    const { saveGridAction } = await import("./repository");
+    for (let i = 0; i < 8; i += 1) {
+      await saveGridAction({ id: null, areaId: "a-8", title: `Step ${i}`, minutes: 10, addAs: "task", rhythm: "weekly" }).catch(() => undefined);
+    }
+    await expect(saveGridAction({ id: null, areaId: "a-8", title: "One more", minutes: 10, addAs: "task", rhythm: "weekly" })).rejects.toThrow();
+  });
+});

@@ -1,4 +1,4 @@
-import type { CompanionState, FocusLobby, Habit, NotificationItem, PlannerData, SquadMember, Task } from "./types";
+import type { Achievement, CompanionState, FocusLobby, Habit, NotificationItem, PlannerData, SquadMember, Task } from "./types";
 
 export const mockCompanion: CompanionState = {
   stage: "teen",
@@ -98,3 +98,61 @@ export const mockFocusLobby: FocusLobby = {
 
 /** Focused minutes already logged this week before today's sessions. */
 export const mockWeekFocusedMinutes = 165;
+
+export const mockAchievements: Achievement[] = [
+  {
+    id: "first-step", title: "First step", tone: "gold", earnedOn: "8 Sep 2026", criteria: "Finished your first task", icon: "check", xp: 25, isShared: false, progress: null,
+    counted: [{ title: "Set up workspace", detail: "8 Sep", done: true }],
+    headline: "The first one counts most.", body: "Everything since started with this.",
+  },
+  {
+    id: "deep-diver", title: "Deep diver", tone: "violet", earnedOn: "10 Nov 2026", criteria: "5 focus sessions of 25+ min", icon: "play", xp: 50, isShared: false, progress: null,
+    counted: [
+      { title: "Review JS closures", detail: "45 min · 10 Nov", done: true },
+      { title: "Read chapter 2", detail: "30 min · 7 Nov", done: true },
+      { title: "Portfolio intro", detail: "25 min · 5 Nov", done: true },
+    ],
+    headline: "You stayed with it.", body: "Your longest was 45 minutes on Review JS closures.",
+  },
+  {
+    id: "steady-stream", title: "Steady stream", tone: "mint", earnedOn: "1 Nov 2026", criteria: "7-day water habit", icon: "water", xp: 30, isShared: false, progress: null,
+    counted: [{ title: "Drink water", detail: "7 scheduled days in a row", done: true }],
+    headline: "Little sips, every day.", body: "Seven days of looking after yourself.",
+  },
+  {
+    id: "good-company", title: "Good company", tone: "violet", earnedOn: "14 Oct 2026", criteria: "Cheered a squad member", icon: "person", xp: 15, isShared: true, progress: null,
+    counted: [{ title: "High five to Zara", detail: "14 Oct", done: true }],
+    headline: "Kindness counts too.", body: "Your cheer landed on Zara's stage.",
+  },
+  {
+    id: "bookworm", title: "Bookworm", tone: "mint", earnedOn: null, criteria: "Read 10 days", icon: "read", xp: 40, isShared: false, progress: { done: 7, total: 10 },
+    counted: [
+      { title: "Read · 7 days so far", detail: "Any 10 days, in any order", done: true },
+      { title: "3 more days", detail: "No rush", done: false },
+    ],
+    headline: "Pages add up.", body: "Any ten days of reading, in any order.",
+  },
+  {
+    id: "clear-direction", title: "Clear direction", tone: "gold", earnedOn: null, criteria: "Finish a Life Audit", icon: "sparkle", xp: 60, isShared: false, progress: { done: 4, total: 12 },
+    counted: [
+      { title: "4 reflections done", detail: "Life Audit", done: true },
+      { title: "8 to go", detail: "Skip any you like", done: false },
+    ],
+    headline: "A clearer picture.", body: "Twelve short reflections in Growth Studio.",
+  },
+  {
+    id: "finding-rhythm", title: "Finding your rhythm", tone: "violet", earnedOn: null, criteria: "Focus on 3 different days", icon: "play", xp: 25, isShared: false, progress: { done: 2, total: 3 },
+    counted: [
+      { title: "Thursday 12 Nov", detail: "25 min", done: true },
+      { title: "Sunday 15 Nov", detail: "45 min", done: true },
+      { title: "Any day you like", detail: "One more to go", done: false },
+    ],
+    headline: "A little consistency, your own way.", body: "They don't need to be in a row. There's no streak to protect.",
+  },
+];
+
+export const mockSquadMoments = [
+  { id: "sm-1", name: "Malik", text: "Malik hit 30 focus hours", when: "Tuesday", canCheer: true },
+  { id: "sm-2", name: "Kemi", text: "Kemi finished “Read chapter 3”", when: "Sunday", canCheer: true },
+  { id: "sm-3", name: "Zara", text: "Zara reached 20 reading sessions", when: "Saturday", canCheer: true },
+];
