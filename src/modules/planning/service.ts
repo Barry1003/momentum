@@ -1,6 +1,7 @@
 import "server-only";
 import { appendXp } from "@/modules/xp/service";
 import { XP } from "@/modules/xp/config";
+import { localDateInTimezone } from "@/modules/habits/validation";
 import { getPrisma } from "@/db/client";
 import { activeMember } from "@/modules/squads/service";
 import { SquadError } from "@/modules/squads/policy";
@@ -180,6 +181,9 @@ export async function archiveTask(taskId: string, userId: string) {
 
 export async function completeTask(taskId: string, userId: string, occurrenceDate: string) {
   const task = await accessibleTask(taskId, userId);
+  const profile = await db().userProfile.findUnique({ where: { userId }, select: { timezone: true } });
+  const today = localDateInTimezone(new Date(), profile?.timezone ?? "UTC");
+  if (occurrenceDate !== today) throw new SquadError("INVALID_DATE", 400, "Tasks can only be completed for today");
   if (!canCompleteTask(task.ownerId, task.assigneeId, userId))
     throw new SquadError("FORBIDDEN", 403, "Only the assignee may complete this task");
   return db().$transaction(async tx => {
@@ -191,6 +195,9 @@ export async function completeTask(taskId: string, userId: string, occurrenceDat
       select: { id: true, completedAt: true },
     });
     if (existing) return { completion: existing, xpAwarded: 0, stageChanged: false };
+    // A task is one-time until recurring task definitions are implemented.
+    const prior = await tx.taskCompletion.findFirst({ where: { taskId }, select: { id: true } });
+    if (prior) throw new SquadError("ALREADY_COMPLETED", 409, "Task is already complete");
     const completion = await tx.taskCompletion.create({
       data: { taskId, userId, occurrenceDate: date },
       select: { id: true, completedAt: true },
