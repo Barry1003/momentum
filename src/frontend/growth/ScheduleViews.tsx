@@ -624,6 +624,7 @@ function ChooseTime({ item, todayIso, face }: { item: SchedulerItem; todayIso: s
         subtitle={conflict ? "Nothing has moved." : "Tap a day and a time. No dragging needed."}
       />
       <Split
+        from="md"
         left={
           <>
             <WeekStrip
@@ -675,6 +676,7 @@ function ChooseTime({ item, todayIso, face }: { item: SchedulerItem; todayIso: s
         }
         right={
           <>
+            <DayAgenda date={date} blocks={blocks} title={item.title} time={time} minutes={item.minutes} />
             <label className="block">
               <span className="mb-2 block font-heading text-body font-bold text-text">Start time</span>
               <span className={cn("flex items-center gap-3 rounded-[22px] bg-surface px-5 py-3.5 shadow-raised outline outline-2", conflict ? "outline-[#c9822f]" : "outline-accent")}>
@@ -723,6 +725,38 @@ function ChooseTime({ item, todayIso, face }: { item: SchedulerItem; todayIso: s
         }
       />
     </>
+  );
+}
+
+/** Tablet (Figma 06e): the chosen day's agenda beside the form, with the new task slotted in. */
+function DayAgenda({ date, blocks, title, time, minutes }: { date: string; blocks: BusyBlock[]; title: string; time: string; minutes: number }) {
+  const valid = /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
+  const rows = [
+    ...blocks.map((block) => ({ key: `${block.title}-${block.from}`, time: block.from, title: block.title, detail: `${block.from}–${block.to}${block.note ? ` · ${block.note}` : ""}`, isNew: false })),
+    ...(valid ? [{ key: "new", time, title, detail: "New · not saved yet", isNew: true }] : []),
+  ].sort((a, b) => a.time.localeCompare(b.time));
+  return (
+    <section className="hidden md:block">
+      <Panel title={`${dayShort(date)} · your day`}>
+        <ul className="divide-y divide-outline">
+          {rows.map((row) => (
+            <li key={row.key} className="flex items-center gap-3 py-3">
+              <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full", row.isNew ? "bg-success-tint text-success" : "bg-accent-tint text-accent-strong")}>
+                {row.isNew ? <SparkleIcon className="h-5 w-5" /> : <ReadIcon className="h-5 w-5" />}
+              </span>
+              <span className="flex-1">
+                <span className="block font-heading text-body font-bold text-text">
+                  {row.time} {row.title}
+                </span>
+                <span className="block font-heading text-meta text-text-muted">{row.detail}</span>
+              </span>
+              {row.isNew ? <span className="rounded-full bg-success-tint px-3 py-1 font-heading text-meta font-bold text-success">New</span> : null}
+            </li>
+          ))}
+        </ul>
+      </Panel>
+      <p className="sr-only">{`${title} would take ${minutes} minutes.`}</p>
+    </section>
   );
 }
 
