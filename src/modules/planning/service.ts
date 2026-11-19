@@ -1,4 +1,6 @@
 import "server-only";
+import { appendXp } from "@/modules/xp/service";
+import { XP } from "@/modules/xp/config";
 import { getPrisma } from "@/db/client";
 import { activeMember } from "@/modules/squads/service";
 import { SquadError } from "@/modules/squads/policy";
@@ -178,25 +180,49 @@ export async function archiveTask(taskId: string, userId: string) {
 
 export async function completeTask(taskId: string, userId: string, occurrenceDate: string) {
   const task = await accessibleTask(taskId, userId);
-  if (!canCompleteTask(task.ownerId, task.assigneeId, userId)) {
+  if (!canCompleteTask(task.ownerId, task.assigneeId, userId))
     throw new SquadError("FORBIDDEN", 403, "Only the assignee may complete this task");
-  }
-  // Unique (taskId, occurrenceDate) ensures retries never create duplicate completions.
-  const completion = await db().taskCompletion.upsert({
-    where: { taskId_occurrenceDate: { taskId, occurrenceDate: asUtcDate(occurrenceDate) } },
-    create: { taskId, userId, occurrenceDate: asUtcDate(occurrenceDate) },
-    update: {},
-    select: { id: true, completedAt: true },
+  return db().$transaction(async tx => {
+    // Lock the task for concurrent create/reopen races.
+    await tx.$queryRaw`SELECT id FROM "task" WHERE id = ${taskId} FOR UPDATE`;
+    const date = asUtcDate(occurrenceDate);
+    const existing = await tx.taskCompletion.findUnique({
+      where: { taskId_occurrenceDate: { taskId, occurrenceDate: date } },
+      select: { id: true, completedAt: true },
+    });
+    if (existing) return { completion: existing, xpAwarded: 0, stageChanged: false };
+    const completion = await tx.taskCompletion.create({
+      data: { taskId, userId, occurrenceDate: date },
+      select: { id: true, completedAt: true },
+    });
+    const growth = await appendXp(tx, userId, {
+      source: "TASK", sourceId: completion.id, key: `task:${completion.id}:award`, amount: XP.task,
+    });
+    return { completion, xpAwarded: growth.xpAwarded, stageChanged: growth.stageChanged };
   });
-  // F06 must award XP in the same transaction as validated completion; no XP before that feature.
-  return { completion, xpAwarded: 0, stageChanged: false };
 }
 
 export async function reopenTask(taskId: string, userId: string, occurrenceDate: string) {
   const task = await accessibleTask(taskId, userId);
-  if (!canCompleteTask(task.ownerId, task.assigneeId, userId)) {
+  if (!canCompleteTask(task.ownerId, task.assigneeId, userId))
     throw new SquadError("FORBIDDEN", 403, "Only the assignee may reopen this task");
-  }
-  await db().taskCompletion.deleteMany({ where: { taskId, occurrenceDate: asUtcDate(occurrenceDate) } });
-  return { reopened: true, xpAwarded: 0 };
+  return db().$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "task" WHERE id = ${taskId} FOR UPDATE`;
+    const completion = await tx.taskCompletion.findUnique({
+      where: { taskId_occurrenceDate: { taskId, occurrenceDate: asUtcDate(occurrenceDate) } },
+      select: { id: true, userId: true },
+    });
+    if (!completion) return { reopened: true, xpAwarded: 0 };
+    if (completion.userId !== userId) throw new SquadError("NOT_FOUND", 404, "Completion not found");
+    await tx.taskCompletion.delete({ where: { id: completion.id } });
+    // The original event stays in the ledger, with a compensating entry.
+    const award = await tx.xpEvent.findUnique({
+      where: { userId_idempotencyKey: { userId, idempotencyKey: `task:${completion.id}:award` } },
+      select: { amount: true },
+    });
+    const growth = award ? await appendXp(tx, userId, {
+      source: "TASK", sourceId: completion.id, key: `task:${completion.id}:undo`, amount: -award.amount,
+    }) : { xpAwarded: 0 };
+    return { reopened: true, xpAwarded: growth.xpAwarded };
+  });
 }
