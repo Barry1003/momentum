@@ -149,7 +149,7 @@ export async function logHabit(id: string, userId: string, date: string, value: 
 }
 
 export async function clearHabitLog(id: string, userId: string, date: string) {
-  const habit = await getHabit(id, userId);
+  await getHabit(id, userId);
   await validateLogDate(userId, date);
   return db().$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM "habit" WHERE id = ${id} FOR UPDATE`;
