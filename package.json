@@ -27,7 +27,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "zod": "^4.0.0",
-    "better-auth": "1.7.24"
+    "@neondatabase/auth": "0.7.0-beta"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",

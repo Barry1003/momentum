@@ -1,8 +1,5 @@
 "use client";
-import { createAuthClient } from "better-auth/react";
-import { emailOTPClient } from "better-auth/client/plugins";
+import { createAuthClient } from "@neondatabase/auth/next";
 
-// Same-origin auth endpoints; do not ship a server secret to the browser.
-export const authClient = createAuthClient({
-  plugins: [emailOTPClient()],
-});
+/** Same-origin proxy; Neon Auth manages OAuth and session cookies. */
+export const authClient = createAuthClient();

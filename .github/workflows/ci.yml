@@ -2,7 +2,7 @@ name: Momentum CI
 
 on:
   push:
-    branches: [main, frontend, backend, error-fixes]
+    branches: [main, frontend, backend, error-fixes, integration/frontend-backend-core, feature/neon-managed-auth]
   pull_request:
     branches: [main, frontend, backend, error-fixes]
 
