@@ -26,7 +26,7 @@ describe("OTP email delivery", () => {
       .rejects.toThrow("Email provider is not configured");
   });
   it("sends the correct OTP type through Resend once", async () => {
-    const spy = vi.fn(async () => ({ ok: true, status: 200 } as Response));
+    const spy = vi.fn(async (_url: string, _init?: RequestInit) => ({ ok: true, status: 200 } as Response));
     globalThis.fetch = spy as typeof fetch;
     await sendCodeEmail({ to: "user@example.com", code: "123456", type: "email-verification" });
     expect(spy).toHaveBeenCalledTimes(1);
@@ -37,7 +37,7 @@ describe("OTP email delivery", () => {
     expect(body.text).toContain("123456");
   });
   it("reports status codes but never the provider response or OTP", async () => {
-    const spy = vi.fn(async () => ({
+    const spy = vi.fn(async (_url: string, _init?: RequestInit) => ({
       ok: false, status: 403,
       text: async () => "Sensitive provider error with recipient details",
     } as Response));
