@@ -19,7 +19,7 @@ type RawGoal = { id: string; title: string; status: string; squadId: string | nu
 type Workspace = {
  tasks: RawTask[]; habits: RawHabit[]; goals: RawGoal[];
  habitLogs: { habitId: string; date: string; value: number }[];
- avatar: { stage: string; totalXp: number } | null;
+ avatar: { stage: string; totalXp: number; xpToNextStage: number | null } | null;
  squads: { squadId: string; squad: { name: string } }[];
 };
 
@@ -46,7 +46,7 @@ const stage = (value: string | undefined): CompanionState["stage"] => {
  return stages[value || ""] || "child";
 };
 function companion(raw: Workspace): CompanionState {
- return { stage: stage(raw.avatar?.stage), xp: raw.avatar?.totalXp ?? 0, xpToNextStage: null };
+ return { stage: stage(raw.avatar?.stage), xp: raw.avatar?.totalXp ?? 0, xpToNextStage: raw.avatar ? raw.avatar.xpToNextStage : 400 };
 }
 function taskOf(raw: RawTask, day = localToday()): Task {
  return {
@@ -144,7 +144,8 @@ export async function getPlanner(): Promise<PlannerData> {
 }
 export async function completeTask(taskId: string): Promise<{task:Task;companion:CompanionState;xpAwarded:number}> {
  const day=localToday();
- const response=await request<{xpAwarded:number}>(`/api/tasks/${encodeURIComponent(taskId)}/complete`,"POST",{occurrenceDate:day});
+ const response=await request<{xpAwarded:number;stageChanged:boolean}>(`/api/tasks/${encodeURIComponent(taskId)}/complete`,"POST",{occurrenceDate:day});
+ if(response.stageChanged && typeof window !== "undefined") window.dispatchEvent(new Event("momentum:stage-up"));
  const raw=await workspace();
  const task=raw.tasks.find(t=>t.id===taskId);
  if(!task)throw new Error("Task no longer accessible");
@@ -191,11 +192,12 @@ export async function incrementHabit(habitId:string):Promise<{habit:Habit;compan
  const day=localToday(),old=historyOf(raw)[habitId]?.[day]??0;
  // A timer is done in one go: log its full length. Counted habits go up by one.
  const value=item.targetType==="DURATION"?item.targetValue:Math.min(item.targetValue,old+1);
- if(item.status==="ACTIVE"&&value!==old)await request(`/api/habits/${encodeURIComponent(habitId)}/logs/${day}`,"PUT",{value});
+ const awarded = item.status==="ACTIVE" && value!==old ? await request<{xpAwarded:number;moment:ConsistencyMoment|null}>(`/api/habits/${encodeURIComponent(habitId)}/logs/${day}`,"PUT",{value}) : null;
+ if(awarded?.xpAwarded && typeof window !== "undefined") window.dispatchEvent(new Event("momentum:stage-up"));
  const next=await workspace();
  const habit=next.habits.find(h=>h.id===habitId);
  if(!habit)throw new Error("Habit no longer accessible");
- return {habit:habitOf(habit,historyOf(next)),companion:companion(next),moment:null};
+ return {habit:habitOf(habit,historyOf(next)),companion:companion(next),moment:awarded?.moment ?? null};
 }
 export interface HabitChanges {scheduleDays?:number[];targetCount?:number}
 export async function updateHabit(id:string,changes:HabitChanges):Promise<Habit>{
@@ -242,4 +244,12 @@ export async function createGoal(title: string, shared = false): Promise<void> {
  const squadId = shared ? raw.squads[0]?.squadId : undefined;
  if (shared && !squadId) throw new Error("Join a squad before sharing goals");
  await request("/api/goals", "POST", { title: title.trim(), ...(squadId ? { squadId } : {}) });
+}
+
+/** Live stage celebrations are private and require acknowledgement by event ID. */
+export async function getPendingStageUp() {
+ return request<import("../mocks/types").StageUpEvent | null>("/api/xp/stage-up");
+}
+export async function acknowledgeStageUp(eventId: string): Promise<void> {
+ await request("/api/xp/stage-up", "POST", {eventId});
 }

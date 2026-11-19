@@ -1,5 +1,6 @@
 import { apiError, requiredUser, result } from "@/modules/squads/http";
 import { getPrisma } from "@/db/client";
+import { nextThreshold } from "@/modules/xp/config";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,7 @@ export async function GET() {
       db.squadMember.findMany({ where: { userId: user.id, status: "ACTIVE", squad: { status: "ACTIVE" } },
         select: { squadId: true, squad: { select: { name: true } } }, take: 10 }),
     ]);
-    return result({ tasks, goals, habits, habitLogs, avatar, squads });
+    return result({ tasks, goals, habits, habitLogs, avatar: avatar ? { ...avatar, xpToNextStage: nextThreshold(avatar.stage) } : null, squads });
   } catch (error) {
     return apiError(error);
   }

@@ -29,6 +29,8 @@ model User {
   taskCompletions TaskCompletion[]
   habits Habit[]
   habitLogs HabitLog[]
+  xpEvents XpEvent[]
+  growthEvents GrowthEvent[]
 
   @@map("user")
 }
@@ -378,6 +380,7 @@ model HabitLog {
   value     Int
   completed Boolean
   loggedAt  DateTime @default(now())
+  revision  Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   habit     Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
@@ -386,4 +389,54 @@ model HabitLog {
   @@unique([habitId, date])
   @@index([userId, date])
   @@map("habit_log")
+}
+
+enum XpSource {
+  TASK
+  HABIT
+  HABIT_MOMENT
+  FOCUS
+  CHECK_IN
+  MILESTONE
+  GOAL
+  ACHIEVEMENT
+  OPENING_BALANCE
+}
+
+enum GrowthEventKind {
+  STAGE_UP
+  ACHIEVEMENT
+}
+
+// An append-only accounting event; negative entries compensate prior awards.
+model XpEvent {
+  id             String @id @default(cuid())
+  userId         String
+  source         XpSource
+  sourceId       String
+  idempotencyKey String
+  amount         Int
+  createdAt      DateTime @default(now())
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([userId, source, sourceId])
+  @@map("xp_event")
+}
+
+// Private, persistent celebrations. Stage itself is permanent on Avatar.
+model GrowthEvent {
+  id            String @id @default(cuid())
+  userId        String
+  kind          GrowthEventKind
+  stage         AvatarGrowthStage?
+  achievementId String?
+  atXp          Int
+  acknowledgedAt DateTime?
+  createdAt     DateTime @default(now())
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind, acknowledgedAt, createdAt])
+  @@map("growth_event")
 }

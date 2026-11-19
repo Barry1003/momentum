@@ -79,7 +79,7 @@ export function AppShell({ active, children, onAddTask, onAddHabit }: AppShellPr
           setToast(`New habit: ${input.name}`);
         }}
       />
-      <StageUpOverlay onShare={() => setToast("Your squad will see that Ari grew up.")} />
+      <StageUpOverlay onShare={() => setToast("Sharing growth with your squad will be available after privacy controls are connected.")} />
       <AchievementOverlay onShared={() => setToast("Shared with your squad.")} />
       {toast ? <Toast message={toast} onDismiss={dismissToast} /> : null}
     </ShellContext.Provider>
