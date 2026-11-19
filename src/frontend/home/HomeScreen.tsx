@@ -252,7 +252,7 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
 
       <SpaceToggle tab={tab} className="mt-5 md:hidden" />
       {today.error ? <p role="alert" className="mt-4 rounded-card bg-surface p-3 font-heading text-meta text-warning">{today.error.message}</p> : null}
-      <p role="status" className="mt-4 rounded-card bg-surface p-3 font-heading text-meta text-text-muted">Tasks and habits are loaded from your account. XP rewards, check-ins, focus and some squad activity remain previews.</p>
+      <p role="status" className="mt-4 rounded-card bg-surface p-3 font-heading text-meta text-text-muted">Tasks and habits are loaded from your account. Check-ins, focus and some squad activity remain previews.</p>
 
       {tab === "squad" ? (
         <div className="mx-auto mt-6 max-w-[640px]">{body}</div>
