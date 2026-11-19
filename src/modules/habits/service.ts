@@ -99,6 +99,10 @@ export async function logHabit(id: string, userId: string, date: string, value: 
       where: { habitId_date: { habitId: id, date: asUtcDate(date) } },
     });
     const oldValue = previous?.value ?? 0;
+    const maxIncrease = habit.targetType === "DURATION" ? habit.targetValue : 1;
+    if (value > oldValue + maxIncrease) {
+      throw new SquadError("INVALID_INPUT", 400, "Habit progress must be logged one step at a time");
+    }
     if (oldValue === value) {
       return { log: previous, xpAwarded: 0, moment: null };
     }
