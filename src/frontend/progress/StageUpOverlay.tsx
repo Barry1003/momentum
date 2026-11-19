@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { STAGE_ART } from "../companion";
 import { GROWTH_STAGES, stageIndex } from "../home/growth";
-import { acknowledgeStageUp, getPendingStageUp } from "../mocks/repository";
+import { acknowledgeStageUp, getPendingStageUp } from "../api/liveRepository";
 import type { StageUpEvent } from "../mocks/types";
 
 const SPARKS = [
@@ -48,7 +48,7 @@ export function StageUpOverlay({ onShare }: { onShare: () => void }) {
   const label = GROWTH_STAGES[index]?.label ?? "New stage";
 
   function close() {
-    void acknowledgeStageUp();
+    if (event?.id) void acknowledgeStageUp(event.id);
     dialogRef.current?.close();
     setEvent(null);
   }
