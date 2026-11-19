@@ -273,6 +273,7 @@ export interface GoalDetail {
 }
 
 export interface StageUpEvent {
+  id?: string;
   stage: GrowthStage;
   xp: number;
   days: number;
