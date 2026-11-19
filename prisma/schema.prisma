@@ -45,6 +45,7 @@ model User {
   notificationCursor NotificationCursor?
   growthStudio GrowthStudio?
   growthReviews GrowthReview[]
+  companionLook CompanionLook?
   growthEvents GrowthEvent[]
 
   @@map("user")
@@ -709,4 +710,17 @@ model GrowthReview {
 
   @@unique([userId, cycle])
   @@map("growth_review")
+}
+
+// Cosmetic choices for the companion. Never affects the growth stage.
+model CompanionLook {
+  userId    String   @id
+  room      String   @default("lavender")
+  plinth    String   @default("cream")
+  outfit    String   @default("original")
+  accents   String[] @default([])
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("companion_look")
 }

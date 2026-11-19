@@ -12,8 +12,7 @@ import { GROWTH_STAGES, stageIndex } from "../home/growth";
 import { BellIcon, CheckIcon, ChevronRightIcon, PlayIcon, ReadIcon, SparkleIcon, WaterIcon } from "../home/icons";
 import { useDisplayName } from "../home/useClientValues";
 import { cn } from "../lib/cn";
-import { getAchievement, getAchievements, getProgress, setAchievementShared } from "../api/liveRepository";
-import { getCompanionOverview, getProfileSummary } from "../mocks/repository";
+import { getAchievement, getAchievements, getCompanionOverview, getProfileSummary, getProgress, setAchievementShared } from "../api/liveRepository";
 import type { Achievement, CompanionOverview, ProfileSummary, ProgressSummary } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
 import { hoursMinutes, weekStart } from "../progress/format";
@@ -106,7 +105,7 @@ export function MeScreen() {
   const [shareVersion, setShareVersion] = useState(0);
 
   const overview = useAsync<CompanionOverview>(`overview-${view}`, getCompanionOverview);
-  const profile = useAsync<ProfileSummary>(`profile-${displayName}`, () => getProfileSummary(displayName));
+  const profile = useAsync<ProfileSummary>(`profile-${displayName}`, () => getProfileSummary());
   const achievements = useAsync<Achievement[]>(`achievements-${view}-${shareVersion}`, getAchievements);
   const achievement = useAsync<{ item: Achievement | null }>(`achievement-${achievementId}-${shareVersion}`, async () => ({ item: await getAchievement(achievementId) }));
   const week = useAsync<ProgressSummary>(view === "companion" ? "week" : "none", () => {
@@ -491,7 +490,7 @@ export function MeScreen() {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {body}
       <p role="status" className="mt-6 font-heading text-meta text-text-muted">
-        Achievements and XP come from your account. Looks and the profile card are still examples.
+        Ari, your achievements, XP and profile card come from your account.
       </p>
     </main>
   );
