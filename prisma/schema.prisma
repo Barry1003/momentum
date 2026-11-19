@@ -31,6 +31,8 @@ model User {
   habitLogs HabitLog[]
   xpEvents XpEvent[]
   focusSessions FocusSession[]
+  checkIns CheckIn[]
+  achievements UserAchievement[]
   growthEvents GrowthEvent[]
 
   @@map("user")
@@ -468,4 +470,35 @@ model FocusSession {
   @@unique([userId, clientKey])
   @@index([userId, endedAt])
   @@map("focus_session")
+}
+
+// One reflection a day. Words stay private; only "checked in" may be shared.
+model CheckIn {
+  id             String   @id @default(cuid())
+  userId         String
+  date           DateTime @db.Date
+  mood           String
+  effort         String
+  win            String   @default("")
+  obstacle       String   @default("")
+  shareCheckedIn Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("check_in")
+}
+
+// An achievement a person has earned. Definitions live in code (src/modules/progress/catalog.ts).
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+  isShared      Boolean  @default(false)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievement")
 }

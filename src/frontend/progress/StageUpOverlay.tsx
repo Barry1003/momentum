@@ -29,7 +29,7 @@ export function StageUpOverlay({ onShare }: { onShare: () => void }) {
     const check = () =>
       void getPendingStageUp().then((pending) => {
         if (alive && pending) setEvent(pending);
-      });
+      }).catch(() => undefined);
     check();
     window.addEventListener("momentum:stage-up", check);
     return () => {

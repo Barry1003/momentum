@@ -7,7 +7,7 @@ import { STAGE_ART } from "../companion";
 import { useShell } from "../home/AppShell";
 import { useToday } from "../hooks";
 import { cn } from "../lib/cn";
-import { getCheckInStatus, getPlanner, saveCheckIn } from "../mocks/repository";
+import { getCheckInStatus, getPlanner, saveCheckIn } from "../api/liveRepository";
 import type { CheckInStatus, Effort, Mood } from "../mocks/types";
 
 const MOODS: { value: Mood; label: string; face: string; orb: string }[] = [
@@ -231,7 +231,7 @@ export function CheckInScreen() {
             Save check-in
             {status?.xpForCheckIn ? <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-meta">+{status.xpForCheckIn} XP</span> : null}
           </button>
-          <p className="font-heading text-meta text-text-muted">Preview: check-ins here are examples, not saved account data yet.</p>
+          <p className="font-heading text-meta text-text-muted">Your check-in is saved privately. Only “checked in” is ever shared, and only if you choose.</p>
         </div>
       </form>
     </main>
