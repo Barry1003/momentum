@@ -19,19 +19,12 @@ import {
   cancelAccountDeletion,
   confirmEmailChange,
   getAccount,
-  getPrivacy,
-  getProfileDetails,
-  getQuietHours,
-  getReminders,
   previewTransferOwnership,
   requestAccountDeletion,
   requestDataExport,
   requestEmailChange,
-  savePrivacy,
-  saveProfileDetails,
-  saveQuietHours,
-  saveReminders,
 } from "../mocks/repository";
+import { getPrivacy, getProfileDetails, getQuietHours, getReminders, savePrivacy, saveProfileDetails, saveQuietHours, saveReminders } from "../api/liveRepository";
 import type { AccountPreview, PrivacySettings, ProfileDetails, QuietDays, QuietHours, ReminderSettings } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
 import { saveComfort, useComfort, type Comfort } from "./comfort";
@@ -232,7 +225,7 @@ export function SettingsScreen() {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {body}
       <p role="status" className="mt-6 font-heading text-meta text-text-muted">
-        Preview: handle, intention, sharing, reminders and account requests here are examples. Your display name and sign out are real.
+        Your profile, sharing, reminders and quiet hours are saved to your account. Email change, export and deletion are still previews.
       </p>
     </main>
   );
@@ -245,7 +238,7 @@ function ProfileFlow({ view }: { view: "profile" | "profilePreview" | "profileSa
   const params = useSearchParams();
   const savedName = useDisplayName();
   const today = useToday();
-  const [details] = useLoaded<ProfileDetails>(() => getProfileDetails(savedName));
+  const [details] = useLoaded<ProfileDetails>(() => getProfileDetails());
   const [draft, setDraft] = useState<{ name: string; handle: string; intention: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

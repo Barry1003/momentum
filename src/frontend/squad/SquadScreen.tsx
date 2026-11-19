@@ -23,18 +23,15 @@ import {
   getMemberShare,
   sendCheer,
   type MemberShare,
-  getPrivacy,
-  getReminders,
   getSharedGoal,
   joinSharedGoal,
   leaveSharedGoal,
-  savePrivacy,
-  saveReminders,
   submitSquadReport,
   type SharedGoalPreview,
 } from "../mocks/repository";
 import type { PrivacySettings, ReminderSettings } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
+import { getPrivacy, getReminders, savePrivacy, saveReminders } from "../api/liveRepository";
 import { SquadApiError, parseInviteCode, squadApi, type InvitationInfo, type InvitationPreview, type MySquad, type SquadMemberInfo } from "./api";
 
 type View =
@@ -252,7 +249,7 @@ export function SquadScreen() {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {body}
       <p role="status" className="mx-auto mt-6 max-w-[560px] font-heading text-meta text-text-muted">
-        Preview: shared goals, reports, waves, muting and sharing switches here are examples. Creating, inviting, joining, leaving and handing over a squad are real.
+        Preview: shared goals, reports, cheers, waves and muting here are examples. Creating, inviting, joining, leaving, handing over a squad and your sharing switches are real.
       </p>
     </main>
   );

@@ -345,3 +345,15 @@ export async function confirmMilestone(goalId: string, milestoneId: string): Pro
  if (result.xpAwarded) celebrate();
  return { ...result, companion: result.companion ?? fallbackCompanion };
 }
+
+// ---------------------------------------------------------------- settings
+
+export async function getPrivacy(): Promise<import("../mocks/types").PrivacySettings> { return request("/api/settings/privacy"); }
+export async function savePrivacy(next: import("../mocks/types").PrivacySettings): Promise<import("../mocks/types").PrivacySettings> { return request("/api/settings/privacy", "PUT", next); }
+export async function getReminders(): Promise<import("../mocks/types").ReminderSettings> { return request("/api/settings/reminders"); }
+export async function saveReminders(next: import("../mocks/types").ReminderSettings): Promise<import("../mocks/types").ReminderSettings> { return request("/api/settings/reminders", "PUT", next); }
+export async function getQuietHours(): Promise<import("../mocks/types").QuietHours> { return request("/api/settings/quiet-hours"); }
+export async function saveQuietHours(next: import("../mocks/types").QuietHours): Promise<import("../mocks/types").QuietHours> { return request("/api/settings/quiet-hours", "PUT", next); }
+/** Until a handle is saved, the server suggests one from the saved display name. */
+export async function getProfileDetails(): Promise<import("../mocks/types").ProfileDetails> { return request("/api/settings/profile"); }
+export async function saveProfileDetails(next: import("../mocks/types").ProfileDetails): Promise<import("../mocks/types").ProfileDetails> { return request("/api/settings/profile", "PUT", next); }
