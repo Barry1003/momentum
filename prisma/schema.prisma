@@ -18,6 +18,16 @@ model User {
   sessions      Session[]
   accounts      Account[]
   profile       UserProfile?
+  ownedSquads   Squad[]           @relation("SquadOwner")
+  squadMemberships SquadMember[]
+  invitationsCreated SquadInvitation[] @relation("InvitationCreator")
+  goalsOwned Goal[] @relation("GoalOwner")
+  goalMemberships GoalMember[]
+  tasksOwned Task[] @relation("TaskOwner")
+  tasksAssigned Task[] @relation("TaskAssignee")
+  taskCompletions TaskCompletion[]
+  habits Habit[]
+  habitLogs HabitLog[]
 
   @@map("user")
 }
@@ -82,4 +92,261 @@ model UserProfile {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profile")
+}
+
+
+enum SquadRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum SquadMemberStatus {
+  ACTIVE
+  LEFT
+  REMOVED
+}
+
+enum SquadStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum InvitationStatus {
+  OPEN
+  CLOSED
+  EXPIRED
+}
+
+model Squad {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  maxMembers  Int       @default(10)
+  status      SquadStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User @relation("SquadOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  members     SquadMember[]
+  invitations SquadInvitation[]
+  goals Goal[]
+  tasks Task[]
+  sharedHabits Habit[]
+
+  @@index([ownerId])
+  @@map("squad")
+}
+
+model SquadMember {
+  id        String @id @default(cuid())
+  squadId   String
+  userId    String
+  role      SquadRole @default(MEMBER)
+  status    SquadMemberStatus @default(ACTIVE)
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  squad     Squad @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([squadId, userId])
+  @@index([userId, status])
+  @@index([squadId, status])
+  @@map("squad_member")
+}
+
+model SquadInvitation {
+  id          String @id @default(cuid())
+  squadId     String
+  createdById String
+  codeHash    String @unique
+  email       String?
+  expiresAt   DateTime
+  maxUses     Int @default(1)
+  uses        Int @default(0)
+  status      InvitationStatus @default(OPEN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  squad       Squad @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  createdBy   User @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([squadId, status])
+  @@index([expiresAt])
+  @@map("squad_invitation")
+}
+
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+enum GoalSource {
+  MANUAL
+  GROWTH_STUDIO
+}
+enum GoalMemberRole {
+  EDITOR
+  VIEWER
+}
+enum TaskVisibility {
+  PRIVATE
+  SQUAD
+}
+enum TaskPriority {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+enum TaskQuadrant {
+  DO
+  PLAN
+  RECONSIDER
+  LEAVE
+}
+
+model Goal {
+  id          String @id @default(cuid())
+  ownerId     String
+  squadId     String?
+  title       String
+  why         String?
+  area        String?
+  status      GoalStatus @default(ACTIVE)
+  targetDate  DateTime? @db.Date
+  completedAt DateTime?
+  source      GoalSource @default(MANUAL)
+  archivedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User @relation("GoalOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  squad       Squad? @relation(fields: [squadId], references: [id], onDelete: Restrict)
+  members     GoalMember[]
+  tasks       Task[]
+  habits       Habit[]
+
+  @@index([ownerId, status])
+  @@index([squadId, status])
+  @@map("goal")
+}
+
+model GoalMember {
+  id        String @id @default(cuid())
+  goalId    String
+  userId    String
+  role      GoalMemberRole @default(VIEWER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  goal      Goal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([goalId, userId])
+  @@index([userId])
+  @@map("goal_member")
+}
+
+model Task {
+  id            String @id @default(cuid())
+  ownerId       String
+  assigneeId    String?
+  goalId        String?
+  squadId       String?
+  title         String
+  notes         String?
+  dueDate       DateTime? @db.Date
+  dueTime       String?
+  durationMin   Int?
+  priority      TaskPriority @default(NONE)
+  visibility    TaskVisibility @default(PRIVATE)
+  quadrant      TaskQuadrant?
+  archivedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  owner         User @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  assignee      User? @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  goal          Goal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  squad         Squad? @relation(fields: [squadId], references: [id], onDelete: Restrict)
+  completions   TaskCompletion[]
+
+  @@index([ownerId, dueDate])
+  @@index([squadId, dueDate])
+  @@index([goalId])
+  @@map("task")
+}
+
+model TaskCompletion {
+  id             String @id @default(cuid())
+  taskId         String
+  userId         String
+  occurrenceDate DateTime @db.Date
+  completedAt    DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  task           Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user           User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, occurrenceDate])
+  @@index([userId, occurrenceDate])
+  @@map("task_completion")
+}
+
+enum HabitTargetType {
+  CHECK
+  COUNT
+  DURATION
+}
+
+enum HabitStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+model Habit {
+  id                String @id @default(cuid())
+  ownerId           String
+  name              String
+  description       String?
+  category          String?
+  icon              String?
+  targetType        HabitTargetType @default(CHECK)
+  targetValue       Int @default(1)
+  unit              String?
+  reminderTime      String?
+  goalId            String?
+  sharedWithSquadId String?
+  status            HabitStatus @default(ACTIVE)
+  pausedAt          DateTime?
+  archivedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  owner             User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  goal              Goal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  sharedWithSquad   Squad? @relation(fields: [sharedWithSquadId], references: [id], onDelete: SetNull)
+  logs              HabitLog[]
+
+  @@index([ownerId, status])
+  @@index([sharedWithSquadId])
+  @@map("habit")
+}
+
+model HabitLog {
+  id        String @id @default(cuid())
+  habitId   String
+  userId    String
+  date      DateTime @db.Date
+  value     Int
+  completed Boolean
+  loggedAt  DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  habit     Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([habitId, date])
+  @@index([userId, date])
+  @@map("habit_log")
 }
