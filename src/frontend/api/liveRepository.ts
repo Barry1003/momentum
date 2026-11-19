@@ -373,3 +373,26 @@ export const DATA_EXPORT_URL = "/api/account/export";
 export async function sendDeletionCode(): Promise<void> { await request("/api/account/deletion/code", "POST"); }
 export async function requestAccountDeletion(code: string, confirmWord: string): Promise<AccountPreview> { return request("/api/account/deletion", "POST", { code, confirmWord }); }
 export async function cancelAccountDeletion(): Promise<AccountPreview> { return request("/api/account/deletion", "DELETE"); }
+
+// ---------------------------------------------------------------- squad social
+
+type SharedGoalPreview = import("../mocks/repository").SharedGoalPreview;
+export async function getMemberShare(userId: string): Promise<import("../mocks/repository").MemberShare> {
+ return request(`/api/squad/members/${encodeURIComponent(userId)}/share`);
+}
+export async function sendCheer(toUserId: string, message: string): Promise<{ remaining: number }> {
+ return request("/api/squad/cheers", "POST", { toUserId, message });
+}
+export async function setMuted(mutedUserId: string, muted: boolean): Promise<{ muted: boolean }> {
+ return request("/api/squad/mutes", "PUT", { mutedUserId, muted });
+}
+export async function submitSquadReport(input: { reason: string; details: string; reportedUserId?: string | null }): Promise<{ id: string }> {
+ return request("/api/squad/reports", "POST", { reason: input.reason, details: input.details.trim(), reportedUserId: input.reportedUserId ?? null });
+}
+export async function getSquadProgress(): Promise<import("../mocks/types").SquadProgress> { return request("/api/squad/progress"); }
+export async function cheerMoment(momentId: string): Promise<void> { await request("/api/squad/moments/cheer", "POST", { momentId }); }
+export async function getSharedGoal(): Promise<SharedGoalPreview | null> { return (await request<{ goal: SharedGoalPreview | null }>("/api/squad/shared-goal")).goal; }
+export async function joinSharedGoal(prefs: SharedGoalPreview["prefs"]): Promise<SharedGoalPreview | null> {
+ return (await request<{ goal: SharedGoalPreview | null }>("/api/squad/shared-goal/join", "POST", prefs)).goal;
+}
+export async function leaveSharedGoal(): Promise<SharedGoalPreview | null> { return (await request<{ goal: SharedGoalPreview | null }>("/api/squad/shared-goal/leave", "POST")).goal; }

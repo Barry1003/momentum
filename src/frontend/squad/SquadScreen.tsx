@@ -17,21 +17,22 @@ import { useToday } from "../hooks";
 import { cn } from "../lib/cn";
 import { MenuRow } from "../me/MeScreen";
 import { Choice, ErrorLine, Note, Primary, Secondary, ToggleRow, errorText } from "../me/SettingsScreen";
+import { CHEERS, REPORT_REASONS, type MemberShare, type SharedGoalPreview } from "../mocks/repository";
+import type { PrivacySettings, ReminderSettings } from "../mocks/types";
+import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
 import {
-  CHEERS,
-  REPORT_REASONS,
   getMemberShare,
-  sendCheer,
-  type MemberShare,
+  getPrivacy,
+  getReminders,
   getSharedGoal,
   joinSharedGoal,
   leaveSharedGoal,
+  savePrivacy,
+  saveReminders,
+  sendCheer,
+  setMuted,
   submitSquadReport,
-  type SharedGoalPreview,
-} from "../mocks/repository";
-import type { PrivacySettings, ReminderSettings } from "../mocks/types";
-import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
-import { getPrivacy, getReminders, savePrivacy, saveReminders } from "../api/liveRepository";
+} from "../api/liveRepository";
 import { SquadApiError, parseInviteCode, squadApi, type InvitationInfo, type InvitationPreview, type MySquad, type SquadMemberInfo } from "./api";
 
 type View =
@@ -249,7 +250,7 @@ export function SquadScreen() {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {body}
       <p role="status" className="mx-auto mt-6 max-w-[560px] font-heading text-meta text-text-muted">
-        Preview: shared goals, reports, cheers, waves and muting here are examples. Creating, inviting, joining, leaving, handing over a squad and your sharing switches are real.
+        Everything here is saved to your squad. Reports go privately to the Momentum team.
       </p>
     </main>
   );
@@ -666,7 +667,13 @@ function JoinedView({ squad, members, myId, stage }: Context & { squad: MySquad 
                   <span className="block font-heading text-body font-bold text-text">{member.name}</span>
                   <span className="block font-heading text-meta text-text-muted">{member.role === "OWNER" ? "Owner" : `Joined ${shortDate(member.joinedAt)}`}</span>
                 </span>
-                <button type="button" onClick={() => showToast(`Wave sent to ${member.name} (preview)`)} className="rounded-full bg-accent-tint px-3 py-1.5 font-heading text-meta font-bold text-accent-strong">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void sendCheer(member.userId, "Wave")
+                      .then(() => showToast(`Wave sent to ${member.name}`))
+                      .catch((err: unknown) => showToast(errorText(err, "Couldn’t send that wave.")))
+                  } className="rounded-full bg-accent-tint px-3 py-1.5 font-heading text-meta font-bold text-accent-strong">
                   Wave
                 </button>
               </li>
@@ -729,21 +736,34 @@ function MembersView(context: Context & { squad: MySquad }) {
 
 function SharedGoalView({ squad, stage }: Context & { squad: MySquad }) {
   const router = useRouter();
-  const [goal, setGoal] = useState<SharedGoalPreview | null>(null);
+  // undefined while loading; null when the squad has no shared goal yet.
+  const [goal, setGoal] = useState<SharedGoalPreview | null | undefined>(undefined);
   const [prefs, setPrefs] = useState<SharedGoalPreview["prefs"] | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    void getSharedGoal().then((result) => {
-      if (alive) setGoal(result);
-    });
+    void getSharedGoal()
+      .then((result) => {
+        if (alive) setGoal(result);
+      })
+      .catch(() => {
+        if (alive) setGoal(null);
+      });
     return () => {
       alive = false;
     };
   }, []);
 
-  if (!goal) return <Skeleton className="mx-auto h-72 w-full max-w-[560px] rounded-[26px]" />;
+  if (goal === undefined) return <Skeleton className="mx-auto h-72 w-full max-w-[560px] rounded-[26px]" />;
+  if (goal === null) {
+    return (
+      <Column>
+        <SubHeader backHref={squadHref("members")} backLabel="Back" kicker={`${squad.name} · Shared goal`} title="No shared goal yet." subtitle="Any member can start one from Plan → Goals, shared with the squad." />
+        <Secondary to={squadHref("members")}>Back to members</Secondary>
+      </Column>
+    );
+  }
   const current = prefs ?? goal.prefs;
 
   if (!goal.joined) {
@@ -1082,9 +1102,13 @@ function TransferView({ squad, members, myId, reload, stage }: Context & { squad
   );
 }
 
-function ReportView({ view, squad }: Context & { squad: MySquad; view: "report" | "reportSent" }) {
+function ReportView({ view, squad, members, myId }: Context & { squad: MySquad; view: "report" | "reportSent" }) {
   const router = useRouter();
+  const params = useSearchParams();
   const { showToast } = useShell();
+  // ?about=<userId> reports a specific member; it must be someone in this squad.
+  const about = members.find((member) => member.userId === params.get("about") && member.userId !== myId) ?? null;
+  const aboutQuery = about ? `&about=${encodeURIComponent(about.userId)}` : "";
   const [reason, setReason] = useState<string>("");
   const [details, setDetails] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -1099,7 +1123,17 @@ function ReportView({ view, squad }: Context & { squad: MySquad; view: "report" 
         </Note>
         <Panel title="You can also">
           <Divided>
-            <MenuRow onClick={() => showToast("Muted (preview)")} icon={<PersonIcon className="h-5 w-5" />} title="Mute this person" />
+            {about ? (
+              <MenuRow
+                onClick={() =>
+                  void setMuted(about.userId, true)
+                    .then(() => showToast(`${about.name} is muted. They aren’t told.`))
+                    .catch((err: unknown) => showToast(errorText(err, "Couldn’t mute right now.")))
+                }
+                icon={<PersonIcon className="h-5 w-5" />}
+                title="Mute this person"
+              />
+            ) : null}
             <MenuRow href={squadHref("leave")} icon={<HomeIcon className="h-5 w-5" />} title={`Leave ${squad.name}`} />
           </Divided>
         </Panel>
@@ -1112,8 +1146,8 @@ function ReportView({ view, squad }: Context & { squad: MySquad; view: "report" 
     setBusy(true);
     setError(null);
     try {
-      await submitSquadReport({ reason, details });
-      router.replace(squadHref("reportSent"));
+      await submitSquadReport({ reason, details, reportedUserId: about?.userId ?? null });
+      router.replace(squadHref("reportSent", aboutQuery));
     } catch (err) {
       setError(errorText(err, "We couldn’t send that. Please try again."));
       setBusy(false);
@@ -1169,18 +1203,22 @@ function MemberView({ squad, members, myId, stage }: Context & { squad: MySquad 
   const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const name = member?.name ?? "";
+  const memberId = member?.userId ?? "";
 
   useEffect(() => {
     let alive = true;
-    if (!name) return;
-    void getMemberShare(name).then((result) => {
-      if (alive) setShare(result);
-    });
+    if (!memberId) return;
+    void getMemberShare(memberId)
+      .then((result) => {
+        if (alive) setShare(result);
+      })
+      .catch(() => {
+        if (alive) setShare({ status: null, stageLabel: null, shares: [] });
+      });
     return () => {
       alive = false;
     };
-  }, [name]);
+  }, [memberId]);
 
   if (!member || member.userId === myId) {
     return (
