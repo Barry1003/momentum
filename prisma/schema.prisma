@@ -266,6 +266,7 @@ model Goal {
   members     GoalMember[]
   tasks       Task[]
   habits       Habit[]
+  milestones  GoalMilestone[]
 
   @@index([ownerId, status])
   @@index([squadId, status])
@@ -501,4 +502,33 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@map("user_achievement")
+}
+
+// Ordered steps toward a goal. The first one not yet reached is the current one.
+model GoalMilestone {
+  id          String          @id @default(cuid())
+  goalId      String
+  title       String
+  position    Int
+  reachedAt   DateTime?
+  reachedById String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  goal        Goal            @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  criteria    GoalCriterion[]
+
+  @@index([goalId, position])
+  @@map("goal_milestone")
+}
+
+model GoalCriterion {
+  id          String        @id @default(cuid())
+  milestoneId String
+  label       String
+  done        Boolean       @default(false)
+  position    Int
+  milestone   GoalMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@index([milestoneId, position])
+  @@map("goal_criterion")
 }

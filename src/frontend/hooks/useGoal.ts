@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { addGoalTask, completeGoalTask, confirmMilestone, getGoal, toggleCriterion } from "../mocks/repository";
+import { addGoalTask, completeGoalTask, confirmMilestone, getGoal, toggleCriterion } from "../api/liveRepository";
 import type { GoalDetail, TaskPriority, TaskWhen } from "../mocks/types";
 
 export interface MilestoneResult {
