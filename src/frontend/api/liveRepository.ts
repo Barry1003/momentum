@@ -396,3 +396,9 @@ export async function joinSharedGoal(prefs: SharedGoalPreview["prefs"]): Promise
  return (await request<{ goal: SharedGoalPreview | null }>("/api/squad/shared-goal/join", "POST", prefs)).goal;
 }
 export async function leaveSharedGoal(): Promise<SharedGoalPreview | null> { return (await request<{ goal: SharedGoalPreview | null }>("/api/squad/shared-goal/leave", "POST")).goal; }
+
+// ---------------------------------------------------------------- notifications
+
+type NotificationItem = import("../mocks/types").NotificationItem;
+export async function getNotifications(): Promise<NotificationItem[]> { return (await request<{ notifications: NotificationItem[] }>("/api/notifications")).notifications; }
+export async function markAllNotificationsRead(): Promise<NotificationItem[]> { return (await request<{ notifications: NotificationItem[] }>("/api/notifications/read", "POST")).notifications; }

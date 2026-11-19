@@ -42,6 +42,7 @@ model User {
   mutedBy SquadMute[] @relation("MuteOf")
   reportsMade SquadReport[] @relation("ReportBy")
   goalSharePrefs GoalSharePref[]
+  notificationCursor NotificationCursor?
   growthEvents GrowthEvent[]
 
   @@map("user")
@@ -663,4 +664,13 @@ model GoalSharePref {
 
   @@id([goalId, userId])
   @@map("goal_share_pref")
+}
+
+// When the person last marked their notifications read. Notifications themselves are built from activity.
+model NotificationCursor {
+  userId String   @id
+  readAt DateTime
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_cursor")
 }

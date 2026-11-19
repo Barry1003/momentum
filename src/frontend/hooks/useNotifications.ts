@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getNotifications, markAllNotificationsRead } from "../mocks/repository";
+import { getNotifications, markAllNotificationsRead } from "../api/liveRepository";
 import type { NotificationItem } from "../mocks/types";
 
 export interface UseNotificationsResult {
@@ -21,6 +21,7 @@ export function useNotifications(): UseNotificationsResult {
       .then((result) => {
         if (isMounted) setItems(result);
       })
+      .catch(() => undefined)
       .finally(() => {
         if (isMounted) setIsLoading(false);
       });
