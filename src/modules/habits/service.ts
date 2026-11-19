@@ -76,6 +76,7 @@ async function validateLogDate(userId: string, date: string) {
   });
   const localToday = localDateInTimezone(new Date(), profile?.timezone || "UTC");
   if (date > localToday) throw new SquadError("FUTURE_DATE", 400, "Cannot record future habit progress");
+  return localToday;
 }
 
 /** Return an ISO day for a stored DATE without server-timezone drift. */
@@ -83,7 +84,7 @@ const day = (date: Date) => date.toISOString().slice(0, 10);
 
 export async function logHabit(id: string, userId: string, date: string, value: number) {
   const habit = await getHabit(id, userId);
-  await validateLogDate(userId, date);
+  const today = await validateLogDate(userId, date);
   if (habit.status !== "ACTIVE")
     throw new SquadError("HABIT_PAUSED", 409, "Resume this habit to log progress");
   if (!isScheduledOn({
@@ -99,6 +100,9 @@ export async function logHabit(id: string, userId: string, date: string, value: 
       where: { habitId_date: { habitId: id, date: asUtcDate(date) } },
     });
     const oldValue = previous?.value ?? 0;
+    if (date !== today && value > oldValue) {
+      throw new SquadError("INVALID_DATE", 400, "XP can only be earned from today's habit progress");
+    }
     const maxIncrease = habit.targetType === "DURATION" ? habit.targetValue : 1;
     if (value > oldValue + maxIncrease) {
       throw new SquadError("INVALID_INPUT", 400, "Habit progress must be logged one step at a time");
