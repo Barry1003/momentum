@@ -25,6 +25,7 @@ export default function CreateAccountPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const score = passwordScore(password);
   const [busy, setBusy] = useState(false);
+  const [canRetryVerification, setCanRetryVerification] = useState(false);
 
   async function handleCreate() {
     const validEmail = emailSchema.safeParse(email);
@@ -40,21 +41,61 @@ export default function CreateAccountPage() {
     if (!isValid || !validEmail.success) return;
     setBusy(true);
     setNotice(null);
+    setCanRetryVerification(false);
     try {
       const response = await authClient.signUp.email({
         email: validEmail.data, password, name: "Momentum member",
       });
       if (response.error) {
-        setNotice(response.error.message || "Could not create your account.");
+        // The user may already have an unverified account from an earlier attempt.
+        // Allow OTP recovery instead of forcing a second signup.
+        setCanRetryVerification(true);
+        setNotice(response.error.message || "Could not create your account. If you already signed up, request a verification code below.");
         return;
       }
+      // Record the verified target before sending so retries never recreate the account.
       update({ email: validEmail.data });
+      setPassword("");
+      const sent = await authClient.emailOtp.sendVerificationOtp({
+        email: validEmail.data, type: "email-verification",
+      });
+      if (sent.error) {
+        setCanRetryVerification(true);
+        setNotice("Your account was created, but the verification email could not be sent. Check email delivery settings or retry below.");
+        return;
+      }
       router.push("/onboarding/verify-email");
     } catch {
-      setNotice("We could not reach the account service. Try again.");
+      // Network failure can happen after account creation. Do not claim the
+      // account definitely failed, and offer an OTP resend without creating it again.
+      setCanRetryVerification(true);
+      setNotice("We could not finish signup. If your account was created, you can request a verification code below.");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function retryVerification() {
+    const valid = emailSchema.safeParse(email);
+    if (!valid.success || busy) {
+      setEmailError("Enter a valid email to receive your verification code.");
+      return;
+    }
+    setBusy(true);
+    setNotice(null);
+    try {
+      const response = await authClient.emailOtp.sendVerificationOtp({
+        email: valid.data, type: "email-verification",
+      });
+      if (response.error) {
+        setNotice("We could not send the verification code. Check the email service and try again.");
+        return;
+      }
+      update({ email: valid.data });
+      router.push("/onboarding/verify-email");
+    } catch {
+      setNotice("The code could not be sent. Please check your connection and try again.");
+    } finally { setBusy(false); }
   }
 
   return (
@@ -119,9 +160,14 @@ export default function CreateAccountPage() {
       </form>
 
       {notice ? (
-        <p role="status" className="text-center font-heading text-meta text-warning">
+        <p role="alert" className="text-center font-heading text-meta text-warning">
           {notice}
         </p>
+      ) : null}
+      {canRetryVerification ? (
+        <Button type="button" variant="secondary" disabled={busy} onClick={() => void retryVerification()}>
+          Send verification code
+        </Button>
       ) : null}
 
       <SocialButtons
