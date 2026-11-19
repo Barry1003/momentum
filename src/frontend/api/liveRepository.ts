@@ -412,3 +412,13 @@ export async function leaveSharedGoal(): Promise<SharedGoalPreview | null> { ret
 type NotificationItem = import("../mocks/types").NotificationItem;
 export async function getNotifications(): Promise<NotificationItem[]> { return (await request<{ notifications: NotificationItem[] }>("/api/notifications")).notifications; }
 export async function markAllNotificationsRead(): Promise<NotificationItem[]> { return (await request<{ notifications: NotificationItem[] }>("/api/notifications/read", "POST")).notifications; }
+
+// ---------------------------------------------------------------- companion & profile
+
+type StudioState = import("../mocks/types").StudioState;
+export async function getCompanionOverview(): Promise<import("../mocks/types").CompanionOverview> { return request("/api/companion"); }
+export async function getStudio(): Promise<StudioState> { return request("/api/companion/studio"); }
+export async function saveLook(changes: { name?: string; room?: string; plinth?: string; outfit?: string; accents?: string[] }): Promise<StudioState> {
+ return request("/api/companion/studio", "PUT", changes);
+}
+export async function getProfileSummary(): Promise<import("../mocks/types").ProfileSummary> { return request("/api/me/summary"); }

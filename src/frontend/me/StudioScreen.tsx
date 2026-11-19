@@ -13,7 +13,7 @@ import { useShell } from "../home/AppShell";
 import { GROWTH_STAGES, stageIndex } from "../home/growth";
 import { useToday } from "../hooks";
 import { cn } from "../lib/cn";
-import { getStudio, saveLook } from "../mocks/repository";
+import { getStudio, saveLook } from "../api/liveRepository";
 import type { StudioOption, StudioState } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
 import { STAGE_THRESHOLDS } from "../mocks/progressRules";
@@ -476,7 +476,7 @@ function Main({ children }: { children: ReactNode }) {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {children}
       <p role="status" className="mt-6 font-heading text-meta text-text-muted">
-        Preview: looks and unlocks here are examples, not saved account data yet.
+        Your looks are saved to your account. They never change Ari’s growth stage.
       </p>
     </main>
   );

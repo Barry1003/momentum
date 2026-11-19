@@ -159,7 +159,7 @@ export function HabitsScreen() {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {body}
       <p role="status" className="mt-6 font-heading text-meta text-text-muted">
-        Preview: habits, history and XP here are examples, not saved account data yet.
+        Your habits, history and XP are saved to your account.
       </p>
     </main>
   );
