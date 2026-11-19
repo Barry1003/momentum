@@ -23,7 +23,8 @@ export function getAuth() {
     plugins: [emailOTP({
       otpLength: 6,
       expiresIn: 600,
-      sendVerificationOnSignUp: true,
+      // Signup requests its code explicitly, so delivery errors can be shown and retried.
+      sendVerificationOnSignUp: false,
       overrideDefaultEmailVerification: true,
       async sendVerificationOTP({ email, otp, type }) {
         await sendCodeEmail({ to: email, code: otp, type });
@@ -39,7 +40,8 @@ export function getAuth() {
       },
     },
     emailVerification: {
-      sendOnSignUp: true,
+      // Do not send a second verification link alongside the OTP.
+      sendOnSignUp: false,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ user, url }) => {
         await sendAuthenticationEmail({
