@@ -1108,6 +1108,7 @@ export async function getGrowthStudio(): Promise<GrowthStudioState> {
 
 /** Ratings are 1–5 or skipped; notes stay private. There is never an overall score. */
 export async function rateArea(areaId: string, rating: number | null, note: string): Promise<GrowthStudioState> {
+  maybeFail();
   if (rating !== null && (!Number.isInteger(rating) || rating < 1 || rating > 5)) throw new Error("Pick 1 to 5.");
   studio.areas = studio.areas.map((area) => (area.id === areaId ? { ...area, rating, note: note.trim().slice(0, 280) } : area));
   const next = studio.areas.find((area) => area.rating === null && area.id !== areaId);
@@ -1126,12 +1127,42 @@ export async function saveAuditAreas(areas: { id: string | null; name: string }[
 }
 
 export async function answerQuestion(questionId: string, answer: string): Promise<GrowthStudioState> {
+  maybeFail();
   studio.questions = studio.questions.map((question) => (question.id === questionId ? { ...question, answer: answer.trim().slice(0, 2000) } : question));
   return delay(studioView());
 }
 
 /** Point the grid at a goal. A new goal is created through the same goals store, never copied. */
-export async function setCentralGoal(input: { goalId: string | null; newTitle?: string; why: string }): Promise<GrowthStudioState> {
+/** A save that failed for reasons outside the person's control (network, server). Drafts are kept. */
+export class SaveFailedError extends Error {
+  constructor() {
+    super("Couldn’t save just now.");
+    this.name = "SaveFailedError";
+  }
+}
+
+let failNextStudioSave = false;
+
+/** Preview hook for the shared "couldn't save" state: the next Studio save fails once. */
+export function simulateStudioSaveFailure(): void {
+  failNextStudioSave = true;
+}
+
+function maybeFail(): void {
+  if (failNextStudioSave) {
+    failNextStudioSave = false;
+    throw new SaveFailedError();
+  }
+}
+
+/** The grid points at a goal that no longer exists (e.g. deleted elsewhere). */
+export async function previewOrphanGrid(): Promise<GrowthStudioState> {
+  if (studio.grid) studio.grid = { ...studio.grid, goalId: "", goalTitle: "" };
+  return delay(studioView());
+}
+
+export async function setCentralGoal(input: { goalId: string | null; newTitle?: string; why: string; keepGrid?: boolean }): Promise<GrowthStudioState> {
+  maybeFail();
   const found = input.goalId ? goals.find((item) => item.id === input.goalId) : undefined;
   let goal: GoalDetail;
   if (found) goal = found;
@@ -1141,8 +1172,8 @@ export async function setCentralGoal(input: { goalId: string | null; newTitle?: 
   }
   const why = input.why.trim().slice(0, 280);
   goals = goals.map((item) => (item.id === goal.id ? { ...item, why: why || item.why } : item));
-  if (studio.grid && studio.grid.goalId === goal.id) {
-    studio.grid = { ...studio.grid, why };
+  if (studio.grid && (studio.grid.goalId === goal.id || input.keepGrid)) {
+    studio.grid = { ...studio.grid, goalId: goal.id, goalTitle: goal.title, why: why || studio.grid.why };
   } else {
     studio.grid = { goalId: goal.id, goalTitle: goal.title, why, areas: [], actions: [] };
   }
@@ -1169,6 +1200,7 @@ export async function renameGridArea(areaId: string, name: string): Promise<Grow
 }
 
 export async function saveGridAction(input: Omit<GridAction, "id" | "status" | "rhythmChangedByYou"> & { id: string | null }): Promise<{ state: GrowthStudioState; actionId: string }> {
+  maybeFail();
   const grid = studio.grid;
   if (!grid) throw new Error("No grid yet.");
   const title = input.title.trim().slice(0, 80);

@@ -92,9 +92,10 @@ export function HabitTabs({ active, pills }: { active: HabitsView; pills?: boole
   );
 }
 
-export function Split({ left, right }: { left: ReactNode; right: ReactNode }) {
+/** Two columns from `from` up (tablet "md" or desktop "lg"), one column below. */
+export function Split({ left, right, from = "lg" }: { left: ReactNode; right: ReactNode; from?: "md" | "lg" }) {
   return (
-    <div className="mt-5 grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-6">
+    <div className={from === "md" ? "mt-5 grid gap-5 md:grid-cols-2 md:items-start md:gap-6" : "mt-5 grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-6"}>
       <div className="flex flex-col gap-5">{left}</div>
       <div className="flex flex-col gap-5">{right}</div>
     </div>

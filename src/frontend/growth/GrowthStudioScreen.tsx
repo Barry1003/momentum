@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { STAGE_ART } from "../companion";
-import { CheckOrb, Skeleton } from "../components";
+import { CheckOrb } from "../components";
 import { AriTile, Split } from "../habits/views";
 import { useShell } from "../home/AppShell";
 import { CalendarIcon, ChevronRightIcon, MoveIcon, PlayIcon, ReadIcon, SparkleIcon, WaterIcon } from "../home/icons";
@@ -16,6 +16,9 @@ import {
   acceptGridAction,
   answerQuestion,
   getGrowthStudio,
+  previewOrphanGrid,
+  SaveFailedError,
+  simulateStudioSaveFailure,
   rateArea,
   renameGridArea,
   saveAuditAreas,
@@ -27,6 +30,7 @@ import {
 import type { ActionRhythm, AuditArea, AuditIcon, GridAction, GrowthStudioState } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
 import { REVIEW_VIEWS, ReviewViews, type ReviewView } from "./ReviewViews";
+import { GoalNeeded, OfflineStudio, SaveProblem, StudioEmpty, StudioLoading, useOnline } from "./states";
 import { SCHEDULE_VIEWS, ScheduleViews, type ScheduleView } from "./ScheduleViews";
 
 type View =
@@ -221,16 +225,23 @@ export function GrowthStudioScreen() {
   const [state, setState] = useState<GrowthStudioState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<{ retry: () => Promise<void>; kept: string | null } | null>(null);
+  const [offlineAcknowledged, setOfflineAcknowledged] = useState(false);
+  const online = useOnline();
+  const preview = params.get("preview");
 
   useEffect(() => {
     let alive = true;
-    void getGrowthStudio().then((result) => {
+    // Design-review previews of the shared states; they never touch real data.
+    if (preview === "saveError") simulateStudioSaveFailure();
+    const load = preview === "goalneeded" ? previewOrphanGrid() : getGrowthStudio();
+    void load.then((result) => {
       if (alive) setState(result);
     });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [preview]);
 
   const raw = params.get("view");
   const view: View = VIEWS.includes(raw as View) ? (raw as View) : "hub";
@@ -251,22 +262,45 @@ export function GrowthStudioScreen() {
     );
   }
 
-  async function run(action: () => Promise<void>) {
-    setBusy(true);
+  /** Run a save. Offline, nothing is sent; a failed save keeps the draft and offers a retry. */
+  async function run(action: () => Promise<void>, kept: string | null = null) {
     setError(null);
+    if (!online) {
+      setOfflineAcknowledged(false);
+      setError("You’re offline. Keep editing; nothing is saved until you reconnect.");
+      return;
+    }
+    setBusy(true);
     try {
       await action();
+      setFailed(null);
     } catch (err) {
-      setError(errorText(err));
+      if (err instanceof SaveFailedError) setFailed({ retry: action, kept });
+      else setError(errorText(err));
     } finally {
       setBusy(false);
     }
   }
 
-  if (!state) {
+  if (!state || preview === "loading") {
     return (
       <Main>
-        <Skeleton className="h-96 rounded-[28px]" />
+        <StudioLoading face={art.face} />
+      </Main>
+    );
+  }
+
+  if ((!online && !offlineAcknowledged) || (preview === "offline" && !offlineAcknowledged)) {
+    return (
+      <Main>
+        <OfflineStudio
+          state={state}
+          onKeepEditing={() => setOfflineAcknowledged(true)}
+          onRetry={() => {
+            if (navigator.onLine) setOfflineAcknowledged(true);
+            else showToast("Still offline. Your drafts are safe here.");
+          }}
+        />
       </Main>
     );
   }
@@ -283,6 +317,31 @@ export function GrowthStudioScreen() {
   const key = `${view}-${params.get("area") ?? ""}-${params.get("action") ?? ""}-${params.get("q") ?? ""}`;
 
   let body: ReactNode;
+  const goalMissing = Boolean(grid && (!grid.goalId || !(planner.data?.goals ?? []).some((goal) => goal.id === grid.goalId)) && planner.data);
+  if (goalMissing && (view === "grid" || view === "area" || view === "action" || view === "rhythms" || view === "accept" || view === "acceptHabit")) {
+    body = (
+      <GoalNeeded
+        goals={planner.data?.goals ?? []}
+        busy={busy}
+        onUse={(input) =>
+          void run(async () => {
+            setState(await setCentralGoal({ ...input, why: grid?.why ?? "", keepGrid: true }));
+            showToast("Your grid has its goal back. Areas and actions are unchanged.");
+            await planner.reload();
+          }, input.newTitle ?? null)
+        }
+      />
+    );
+    return <Main>{body}</Main>;
+  }
+  const nothingStarted = reflected.length === 0 && answered === 0 && !grid;
+  if (view === "hub" && (nothingStarted || preview === "empty")) {
+    return (
+      <Main>
+        <StudioEmpty art={art.full} />
+      </Main>
+    );
+  }
   switch (view) {
     case "welcome":
       body = (
@@ -383,7 +442,7 @@ export function GrowthStudioScreen() {
           setState(next);
           const upcoming = next.areas.find((item) => item.rating === null && item.id !== area.id);
           router.push(upcoming ? go("rate", `area=${upcoming.id}`) : go("summary"));
-        })
+        }, note.trim() || `${area.name} · ${rating ?? "skipped"}`)
       } /> : null;
       break;
     }
@@ -402,7 +461,7 @@ export function GrowthStudioScreen() {
             void run(async () => {
               if (!skip) setState(await answerQuestion(question.id, answer));
               router.push(index + 1 < s.questions.length ? go("question", `q=${index + 2}`) : go("suggested"));
-            })
+            }, answer.trim() || null)
           }
         />
       );
@@ -552,6 +611,7 @@ export function GrowthStudioScreen() {
         <>
           <SubHeader backHref="/growth" backLabel="Back to Growth Studio" kicker="Harada · All areas" title="Many small ways forward." subtitle={`${grid.goalTitle} · 8 areas, up to 8 actions each`} />
           <Split
+            from="md"
             left={
               <>
                 <div className="flex gap-2">
@@ -575,6 +635,8 @@ export function GrowthStudioScreen() {
                             <RowLink
                               key={area.id}
                               to={go("area", `area=${area.id}`)}
+                              tabletTo={go("grid", `area=${area.id}`)}
+                              selected={params.get("area") === area.id}
                               icon={icons[index % icons.length]}
                               title={area.name}
                               detail={actions.length ? actions.map((action) => action.title).slice(0, 2).join(" · ") : index < 4 ? "Empty · that’s okay" : "Empty"}
@@ -590,6 +652,7 @@ export function GrowthStudioScreen() {
             }
             right={
               <>
+                {mode === "list" ? <AreaDetail state={s} areaId={params.get("area")} /> : null}
                 <AriSays face={art.face}>You don’t need all 8. Two or three areas with one small step each is a great start.</AriSays>
                 <div className="flex gap-3">
                   {[
@@ -665,7 +728,7 @@ export function GrowthStudioScreen() {
                 showToast("Saved as a draft. It stays private.");
                 router.push(go("area", `area=${areaId}`));
               }
-            })
+            }, input.title)
           }
         />
       );
@@ -871,7 +934,24 @@ export function GrowthStudioScreen() {
       );
   }
 
-  return <Main>{body}</Main>;
+  return (
+    <Main>
+      {failed ? (
+        <SaveProblem
+          face={art.face}
+          kept={failed.kept}
+          busy={busy}
+          onRetry={() => void run(failed.retry, failed.kept)}
+          onKeep={() => {
+            setFailed(null);
+            showToast("Kept as a draft on this screen.");
+          }}
+        />
+      ) : null}
+      {/* The form stays mounted while the error shows, so nothing typed is lost. */}
+      <div hidden={Boolean(failed)}>{body}</div>
+    </Main>
+  );
 }
 
 function Main({ children }: { children: ReactNode }) {
@@ -885,19 +965,102 @@ function Main({ children }: { children: ReactNode }) {
   );
 }
 
-function RowLink({ to, icon, title, detail, trailing, bare }: { to: string; icon: ReactNode; title: string; detail: string; trailing?: ReactNode; bare?: boolean }) {
+function RowLink({
+  to,
+  tabletTo,
+  selected,
+  icon,
+  title,
+  detail,
+  trailing,
+  bare,
+}: {
+  to: string;
+  /** On tablet and up, open this instead (e.g. show the detail beside the list). */
+  tabletTo?: string;
+  selected?: boolean;
+  icon: ReactNode;
+  title: string;
+  detail: string;
+  trailing?: ReactNode;
+  bare?: boolean;
+}) {
+  const inner = (
+    <>
+      {bare ? icon : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-tint text-accent-strong">{icon}</span>}
+      <span className="min-w-0 flex-1">
+        <span className="block font-heading text-body font-bold text-text">{title}</span>
+        <span className="block truncate font-heading text-meta text-text-muted">{detail}</span>
+      </span>
+      {selected ? <Badge>Open</Badge> : trailing}
+      <ChevronRightIcon className="h-4 w-4 shrink-0 text-text-muted" />
+    </>
+  );
+  if (!tabletTo) {
+    return (
+      <li>
+        <Link href={to} className="flex items-center gap-3 py-3">
+          {inner}
+        </Link>
+      </li>
+    );
+  }
   return (
     <li>
-      <Link href={to} className="flex items-center gap-3 py-3">
-        {bare ? icon : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-tint text-accent-strong">{icon}</span>}
-        <span className="min-w-0 flex-1">
-          <span className="block font-heading text-body font-bold text-text">{title}</span>
-          <span className="block truncate font-heading text-meta text-text-muted">{detail}</span>
-        </span>
-        {trailing}
-        <ChevronRightIcon className="h-4 w-4 shrink-0 text-text-muted" />
+      <Link href={to} className="flex items-center gap-3 py-3 md:hidden">
+        {inner}
+      </Link>
+      <Link href={tabletTo} scroll={false} aria-current={selected ? "true" : undefined} className="hidden items-center gap-3 py-3 md:flex">
+        {inner}
       </Link>
     </li>
+  );
+}
+
+/** Tablet list & detail (Figma 06e): the chosen area beside the list. Hidden on phones, which open the area page. */
+function AreaDetail({ state, areaId }: { state: GrowthStudioState; areaId: string | null }) {
+  const grid = state.grid;
+  if (!grid) return null;
+  const area = grid.areas.find((item) => item.id === areaId) ?? grid.areas.find((item) => grid.actions.some((action) => action.areaId === item.id)) ?? grid.areas[0];
+  if (!area) return null;
+  const actions = grid.actions.filter((action) => action.areaId === area.id);
+  return (
+    <section className="hidden flex-col gap-4 md:flex" aria-label={`${area.name} details`}>
+      <div>
+        <p className="mb-2 font-heading text-body font-bold text-text">Area</p>
+        <p className="flex items-center justify-between rounded-[22px] bg-surface px-5 py-3.5 font-heading text-body text-text shadow-raised">
+          {area.name}
+          <Link href={go("area", `area=${area.id}`)} className="font-heading text-meta font-bold text-accent-strong">
+            Rename
+          </Link>
+        </p>
+      </div>
+      <Panel title="Small actions">
+        {actions.length === 0 ? (
+          <p className="py-3 font-heading text-body text-text-muted">Empty · that’s okay.</p>
+        ) : (
+          <ul className="divide-y divide-outline">
+            {actions.map((action) => (
+              <li key={action.id}>
+                <Link href={go("action", `action=${action.id}`)} className="flex items-center gap-3 py-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-tint text-accent-strong">{action.addAs === "habit" ? <WaterIcon className="h-5 w-5" /> : <MoveIcon className="h-5 w-5" />}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-heading text-body font-bold text-text">{action.title}</span>
+                    <span className="block font-heading text-meta text-text-muted">{action.status === "suggestion" ? "Suggested by Ari" : action.status === "accepted" ? "In your plan" : `Draft · ${action.minutes} min`}</span>
+                  </span>
+                  {action.status === "suggestion" ? <Badge tone="warm">Suggestion</Badge> : action.status === "accepted" ? <span className="rounded-full bg-success-tint px-3 py-1 font-heading text-meta font-bold text-success">Accepted</span> : <Badge>Draft</Badge>}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      {actions.length < 8 ? (
+        <Link href={go("action", `area=${area.id}`)} className="block w-full rounded-full bg-[image:var(--gradient-primary)] py-4 text-center font-heading text-body font-bold text-white shadow-pressable">
+          Add a small action
+        </Link>
+      ) : null}
+    </section>
   );
 }
 

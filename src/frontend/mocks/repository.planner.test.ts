@@ -248,3 +248,23 @@ describe("scheduler and review", () => {
     expect(again.status).toBe("saved");
   });
 });
+
+describe("studio states", () => {
+  it("fails one save on request and keeps the data", async () => {
+    const { simulateStudioSaveFailure, rateArea, getGrowthStudio } = await import("./repository");
+    const before = (await getGrowthStudio()).areas.find((area) => area.id === "home");
+    simulateStudioSaveFailure();
+    await expect(rateArea("home", 4, "x")).rejects.toThrow();
+    expect((await getGrowthStudio()).areas.find((area) => area.id === "home")?.rating).toBe(before?.rating ?? null);
+    expect((await rateArea("home", 4, "x")).areas.find((area) => area.id === "home")?.rating).toBe(4);
+  });
+
+  it("re-points an orphaned grid without losing its areas", async () => {
+    const { previewOrphanGrid, setCentralGoal } = await import("./repository");
+    const orphan = await previewOrphanGrid();
+    const count = orphan.grid?.areas.length;
+    const fixed = await setCentralGoal({ goalId: "g-3", why: "", keepGrid: true });
+    expect(fixed.grid?.goalId).toBe("g-3");
+    expect(fixed.grid?.areas.length).toBe(count);
+  });
+});
