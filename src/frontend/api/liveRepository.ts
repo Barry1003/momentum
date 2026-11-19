@@ -46,7 +46,7 @@ const stage = (value: string | undefined): CompanionState["stage"] => {
  return stages[value || ""] || "child";
 };
 function companion(raw: Workspace): CompanionState {
- return { stage: stage(raw.avatar?.stage), xp: raw.avatar?.totalXp ?? 0, xpToNextStage: raw.avatar?.xpToNextStage ?? 400 };
+ return { stage: stage(raw.avatar?.stage), xp: raw.avatar?.totalXp ?? 0, xpToNextStage: raw.avatar ? raw.avatar.xpToNextStage : 400 };
 }
 function taskOf(raw: RawTask, day = localToday()): Task {
  return {

@@ -85,7 +85,9 @@ const day = (date: Date) => date.toISOString().slice(0, 10);
 export async function logHabit(id: string, userId: string, date: string, value: number) {
   const habit = await getHabit(id, userId);
   const today = await validateLogDate(userId, date);
-  if (habit.status !== "ACTIVE")
+  // A timed pause that has run out counts as resumed (kept from main's pause behaviour).
+  const pauseExpired = habit.status === "PAUSED" && habit.pausedUntil !== null && day(habit.pausedUntil) < today;
+  if (habit.status !== "ACTIVE" && !pauseExpired)
     throw new SquadError("HABIT_PAUSED", 409, "Resume this habit to log progress");
   if (!isScheduledOn({
     scheduleDays: habit.scheduleDays, targetCount: habit.targetValue,
@@ -96,6 +98,9 @@ export async function logHabit(id: string, userId: string, date: string, value: 
   return db().$transaction(async tx => {
     // All writes for the same habit are serialized before examining the previous value.
     await tx.$queryRaw`SELECT id FROM "habit" WHERE id = ${id} FOR UPDATE`;
+    if (pauseExpired) {
+      await tx.habit.update({ where: { id }, data: { status: "ACTIVE", pausedAt: null, pausedUntil: null } });
+    }
     const previous = await tx.habitLog.findUnique({
       where: { habitId_date: { habitId: id, date: asUtcDate(date) } },
     });

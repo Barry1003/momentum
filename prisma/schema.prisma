@@ -400,6 +400,7 @@ enum XpSource {
   MILESTONE
   GOAL
   ACHIEVEMENT
+  OPENING_BALANCE
 }
 
 enum GrowthEventKind {
