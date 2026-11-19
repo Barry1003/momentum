@@ -251,7 +251,8 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
       </header>
 
       <SpaceToggle tab={tab} className="mt-5 md:hidden" />
-      <p role="status" className="mt-4 rounded-card bg-surface p-3 font-heading text-meta text-text-muted">Preview content: tasks, habits, growth XP, activity and focus indicators below are examples, not saved account data. Your name and squad membership are loaded from your account.</p>
+      {today.error ? <p role="alert" className="mt-4 rounded-card bg-surface p-3 font-heading text-meta text-warning">{today.error.message}</p> : null}
+      <p role="status" className="mt-4 rounded-card bg-surface p-3 font-heading text-meta text-text-muted">Tasks and habits are loaded from your account. XP rewards, check-ins, focus and some squad activity remain previews.</p>
 
       {tab === "squad" ? (
         <div className="mx-auto mt-6 max-w-[640px]">{body}</div>

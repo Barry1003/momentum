@@ -86,6 +86,8 @@ export interface NewTaskInput {
   when?: TaskWhen;
   priority?: TaskPriority;
   goalName?: string;
+  goalId?: string;
+  selectedDate?: string;
   repeats?: TaskRepeat;
   /** Sharing is always a choice: tasks are private unless this is true. */
   shareWithSquad?: boolean;
