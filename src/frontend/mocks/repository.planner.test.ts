@@ -220,3 +220,31 @@ describe("growth studio", () => {
     await expect(saveGridAction({ id: null, areaId: "a-8", title: "One more", minutes: 10, addAs: "task", rhythm: "weekly" })).rejects.toThrow();
   });
 });
+
+describe("scheduler and review", () => {
+  it("refuses invalid and clashing times and suggests a free one", async () => {
+    const { checkSlot, scheduleTask } = await import("./repository");
+    const local = new Date();
+    const iso = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, "0")}-${String(local.getDate()).padStart(2, "0")}`;
+    const invalid = await checkSlot("task-3", iso, "25:90");
+    expect(invalid.reason).toBe("invalid");
+    const clash = await checkSlot("task-3", iso, "10:10");
+    expect(clash.reason).toBe("conflict");
+    expect(clash.suggestion).not.toBeNull();
+    await expect(scheduleTask("task-3", { date: iso, time: "10:10", repeatsDaily: false })).rejects.toThrow();
+    await expect(scheduleTask("task-3", { date: "2000-01-01", time: "17:30", repeatsDaily: false })).rejects.toThrow();
+    const saved = await scheduleTask("task-3", { date: iso, time: "17:30", repeatsDaily: true });
+    expect(saved.time).toBe("17:30");
+  });
+
+  it("saves a review once and turns changes into drafts", async () => {
+    const { getReview, saveReview } = await import("./repository");
+    const review = await getReview();
+    const first = await saveReview({ obstacles: ["Time", "Nope"], context: "Busy", changes: review.suggestions, finish: true });
+    expect(first.xpAwarded).toBe(40);
+    expect(first.obstacles).toEqual(["Time"]);
+    expect(first.suggestions.filter((change) => change.draftActionId).length).toBe(2);
+    const again = await saveReview({ obstacles: [], context: "", changes: first.suggestions, finish: true });
+    expect(again.status).toBe("saved");
+  });
+});

@@ -26,6 +26,8 @@ import {
 } from "../mocks/repository";
 import type { ActionRhythm, AuditArea, AuditIcon, GridAction, GrowthStudioState } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
+import { REVIEW_VIEWS, ReviewViews, type ReviewView } from "./ReviewViews";
+import { SCHEDULE_VIEWS, ScheduleViews, type ScheduleView } from "./ScheduleViews";
 
 type View =
   | "hub"
@@ -234,6 +236,21 @@ export function GrowthStudioScreen() {
   const view: View = VIEWS.includes(raw as View) ? (raw as View) : "hub";
   const art = STAGE_ART[today.data?.companion.stage ?? "teen"];
 
+  if (SCHEDULE_VIEWS.includes(raw as ScheduleView)) {
+    return (
+      <Main>
+        <ScheduleViews view={raw as ScheduleView} />
+      </Main>
+    );
+  }
+  if (REVIEW_VIEWS.includes(raw as ReviewView)) {
+    return (
+      <Main>
+        <ReviewViews view={raw as ReviewView} />
+      </Main>
+    );
+  }
+
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError(null);
@@ -297,7 +314,7 @@ export function GrowthStudioScreen() {
                   <ul className="divide-y divide-outline">
                     <RowLink to={paused ? go("rate", `area=${paused.id}`) : go("summary")} icon={<SparkleIcon className="h-5 w-5" />} title={paused ? "Resume my audit" : "See my summary"} detail={paused ? `${paused.name} is next` : "A direction, not a diagnosis"} />
                     <RowLink to={grid ? go("grid") : go("central")} icon={<CalendarIcon className="h-5 w-5" />} title="Open my goal grid" detail={grid ? `${grid.goalTitle} · ${drafts.length} draft actions` : "Choose a central goal"} />
-                    <RowLink to="/growth" icon={<ReadIcon className="h-5 w-5" />} title="Your next review" detail={`Opens in ${s.reviewOpensInDays} days`} trailing={<Badge>Proposed</Badge>} />
+                    <RowLink to="/growth?view=review" icon={<ReadIcon className="h-5 w-5" />} title="Your next review" detail={s.reviewOpensInDays ? `Opens in ${s.reviewOpensInDays} days` : "Ready now · about 5 minutes"} trailing={<Badge>{s.reviewOpensInDays ? "Proposed" : "Ready"}</Badge>} />
                   </ul>
                 </Panel>
                 <Note title="Drafts stay drafts">Nothing here reaches Planner, Habits or your squad until you accept it.</Note>
@@ -815,8 +832,14 @@ export function GrowthStudioScreen() {
                   {[
                     { title: "Life Audit", detail: `${reflected.length} of ${s.areas.length} areas · private`, cta: reflected.length ? "Continue" : "Start", to: go("areas"), active: true },
                     { title: "Harada Grid", detail: grid ? `Central goal set · ${namedAreas} of 8 areas named` : "Choose one central goal", cta: grid ? "Open" : "Start", to: grid ? go("grid") : go("central"), active: true },
-                    { title: "Quadrant Scheduler", detail: drafts.length ? `${drafts.length} draft actions waiting for you` : "Nothing waiting", cta: "Review", to: go("rhythms"), active: drafts.length > 0 },
-                    { title: "15-Day Review", detail: `Opens in ${s.reviewOpensInDays} days · 3 short questions`, cta: "", to: "", active: false },
+                    { title: "Quadrant Scheduler", detail: drafts.length ? `${drafts.length} draft actions waiting for you` : "Make room for what you accepted", cta: drafts.length ? "Review" : "Open", to: drafts.length ? go("rhythms") : "/growth?view=scheduler", active: true },
+                    {
+                      title: "15-Day Review",
+                      detail: s.reviewOpensInDays ? `Opens in ${s.reviewOpensInDays} days · 4 short steps` : "Ready now · about 5 minutes",
+                      cta: "Start",
+                      to: "/growth?view=review",
+                      active: s.reviewOpensInDays === 0,
+                    },
                   ].map((step, index) => (
                     <li key={step.title} className="flex gap-3">
                       <span

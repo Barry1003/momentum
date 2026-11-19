@@ -9,7 +9,7 @@ export const mockCompanion: CompanionState = {
 export const mockTasks: Task[] = [
   { id: "task-1", title: "Review JS closures", isDone: false, time: "10:00", durationMinutes: 25, category: "Development", goalName: "Confident developer", isShared: false },
   { id: "task-2", title: "Read 10 pages", isDone: true, time: "08:30", durationMinutes: 20, category: "Reading", goalName: "Read consistently", isShared: false },
-  { id: "task-3", title: "Walk for 20 minutes", isDone: false, time: "15:00", durationMinutes: 20, category: "Wellness", isShared: true, sharedByName: "Northstar" },
+  { id: "task-3", title: "Walk for 20 minutes", isDone: false, durationMinutes: 20, category: "Wellness", isShared: true, sharedByName: "Northstar" },
 ];
 
 export const mockHabits: Habit[] = [
