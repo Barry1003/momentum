@@ -33,6 +33,7 @@ model User {
   focusSessions FocusSession[]
   checkIns CheckIn[]
   achievements UserAchievement[]
+  settings UserSettings?
   growthEvents GrowthEvent[]
 
   @@map("user")
@@ -531,4 +532,33 @@ model GoalCriterion {
 
   @@index([milestoneId, position])
   @@map("goal_criterion")
+}
+
+// Per-person preferences: what squads may see, reminders, quiet hours and the public handle.
+model UserSettings {
+  userId                   String   @id
+  handle                   String?  @unique
+  intention                String   @default("")
+  shareCheckedIn           Boolean  @default(true)
+  shareFocusStatus         Boolean  @default(true)
+  shareFinishedSharedTasks Boolean  @default(true)
+  shareGrowthStage         Boolean  @default(true)
+  shareStreaksAndXp        Boolean  @default(false)
+  morningPlan              Boolean  @default(true)
+  morningPlanTime          String   @default("08:30")
+  eveningCheckIn           Boolean  @default(true)
+  eveningCheckInTime       String   @default("21:00")
+  habitReminders           Boolean  @default(true)
+  squadCheers              Boolean  @default(false)
+  reviewDay                Boolean  @default(true)
+  quietEnabled             Boolean  @default(true)
+  quietFrom                String   @default("22:00")
+  quietTo                  String   @default("08:00")
+  quietDays                String   @default("everyDay")
+  quietCustomDays          Int[]    @default([])
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
 }
