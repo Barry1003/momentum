@@ -56,7 +56,7 @@ async function issueCode(userId: string, kind: Kind, to: string, newEmail: strin
 }
 
 /** Check a code. Wrong guesses count, and a code dies after five. Returns the request when it matches. */
-async function useCode(userId: string, kind: Kind, code: string) {
+async function redeemCode(userId: string, kind: Kind, code: string) {
   const request = await db().accountRequest.findFirst({
     where: { userId, kind, consumedAt: null, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: "desc" },
@@ -84,7 +84,7 @@ export async function requestEmailChange(userId: string, newEmail: string) {
 }
 
 export async function confirmEmailChange(userId: string, code: string) {
-  const request = await useCode(userId, "EMAIL_CHANGE", code);
+  const request = await redeemCode(userId, "EMAIL_CHANGE", code);
   if (!request.newEmail) throw new SquadError("CODE_EXPIRED", 400, "Start again: there’s no change waiting.");
   const before = await db().user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
   try {
@@ -109,7 +109,7 @@ export async function sendDeletionCode(userId: string) {
 /** Schedule deletion 14 days out. Nothing is deleted now, and it can be cancelled until then. */
 export async function requestAccountDeletion(userId: string, code: string) {
   if ((await ownedSquadsWithOthers(userId)).length) throw new SquadError("OWNER_TRANSFER_REQUIRED", 409, "Pass your squad on first.");
-  await useCode(userId, "DELETE_ACCOUNT", code);
+  await redeemCode(userId, "DELETE_ACCOUNT", code);
   const scheduledFor = new Date(Date.now() + DELETION_DELAY_DAYS * 24 * 60 * 60 * 1000);
   await db().accountDeletion.upsert({
     where: { userId },
