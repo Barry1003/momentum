@@ -136,7 +136,7 @@ export function ProgressScreen() {
             }
             right={
               <>
-                <Link href="/onboarding/join" className="w-full rounded-full bg-[image:var(--gradient-primary)] py-4 text-center font-heading text-body font-bold text-white shadow-pressable">
+                <Link href="/squad?view=find" className="w-full rounded-full bg-[image:var(--gradient-primary)] py-4 text-center font-heading text-body font-bold text-white shadow-pressable">
                   Find your circle
                 </Link>
                 <Link href="/progress" className="w-full rounded-full bg-surface py-4 text-center font-heading text-body font-bold text-accent-strong shadow-raised">

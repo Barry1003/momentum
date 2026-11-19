@@ -50,13 +50,20 @@ const ICONS: Record<Achievement["icon"], ReactNode> = {
   sparkle: <SparkleIcon className="h-5 w-5" />,
 };
 
-function MenuRow({ href, onClick, icon, title, detail }: { href?: string; onClick?: () => void; icon: ReactNode; title: string; detail: string }) {
+export function MenuRow({ href, onClick, icon, title, detail, tone = "accent" }: { href?: string; onClick?: () => void; icon: ReactNode; title: string; detail?: string; tone?: "accent" | "warm" }) {
   const inner = (
     <>
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[radial-gradient(circle_at_35%_30%,#ffffff,#e2d8f8)] text-accent-strong shadow-raised">{icon}</span>
+      <span
+        className={cn(
+          "grid h-11 w-11 shrink-0 place-items-center rounded-full shadow-raised",
+          tone === "warm" ? "bg-[radial-gradient(circle_at_35%_30%,#ffffff,#fbe3c8)] text-[#c46a12]" : "bg-[radial-gradient(circle_at_35%_30%,#ffffff,#e2d8f8)] text-accent-strong",
+        )}
+      >
+        {icon}
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block font-heading text-body font-bold text-text">{title}</span>
-        <span className="block font-heading text-meta text-text-muted">{detail}</span>
+        {detail ? <span className="block font-heading text-meta text-text-muted">{detail}</span> : null}
       </span>
       <ChevronRightIcon className="h-4 w-4 text-text-muted" />
     </>
