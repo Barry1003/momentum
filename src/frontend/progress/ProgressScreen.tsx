@@ -14,7 +14,8 @@ import { GROWTH_STAGES, stageIndex } from "../home/growth";
 import { ChevronRightIcon, MoveIcon, SparkleIcon } from "../home/icons";
 import { useToday } from "../hooks";
 import { cn } from "../lib/cn";
-import { cheerMoment, getAchievements, getGoalSnapshot, getProgress, getSquadProgress } from "../mocks/repository";
+import { getAchievements, getGoalSnapshot, getProgress } from "../api/liveRepository";
+import { cheerMoment, getSquadProgress } from "../mocks/repository";
 import type { Achievement, GoalSnapshot, ProgressSummary, SquadProgress } from "../mocks/types";
 import { BellButton, Panel, Pill, SubHeader } from "../planner/parts";
 import { addDays, monthRangeLabel, rangeLabel, weekStart, hoursMinutes, signedMinutes } from "./format";
@@ -594,7 +595,7 @@ export function ProgressScreen() {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {body}
       <p role="status" className="mt-6 font-heading text-meta text-text-muted">
-        Preview: progress, squad totals and XP here are examples, not saved account data yet.
+        Your progress comes from your account. Squad totals are still examples.
       </p>
     </main>
   );

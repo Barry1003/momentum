@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { STAGE_ART, type GrowthStage } from "../companion";
 import { AriTile } from "../habits/views";
-import { acknowledgeAchievement, getPendingAchievement, getToday, setAchievementShared } from "../mocks/repository";
+import { acknowledgeAchievement, getPendingAchievement, getToday, setAchievementShared } from "../api/liveRepository";
 import type { Achievement } from "../mocks/types";
 
 /** Figma 07 · Achievement · Celebration. Shown once when the server reports a new keepsake. */
@@ -20,7 +20,7 @@ export function AchievementOverlay({ onShared }: { onShared: () => void }) {
         if (!alive || !pending) return;
         setStage(today.companion.stage);
         setItem(pending);
-      });
+      }).catch(() => undefined);
     check();
     window.addEventListener("momentum:achievement", check);
     return () => {
@@ -38,7 +38,7 @@ export function AchievementOverlay({ onShared }: { onShared: () => void }) {
   const current = item;
 
   function close() {
-    void acknowledgeAchievement();
+    void acknowledgeAchievement(current.id).catch(() => undefined);
     dialogRef.current?.close();
     setItem(null);
   }

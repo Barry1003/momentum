@@ -23,6 +23,13 @@ type Workspace = {
  squads: { squadId: string; squad: { name: string } }[];
 };
 
+/** After any XP, let the stage-up and achievement overlays look for something new to show. */
+function celebrate(): void {
+ if (typeof window === "undefined") return;
+ window.dispatchEvent(new Event("momentum:stage-up"));
+ window.dispatchEvent(new Event("momentum:achievement"));
+}
+
 const dateOnly = (date: string | null | undefined) => date ? date.slice(0, 10) : null;
 const localToday = () => isoDate(new Date());
 
@@ -145,7 +152,7 @@ export async function getPlanner(): Promise<PlannerData> {
 export async function completeTask(taskId: string): Promise<{task:Task;companion:CompanionState;xpAwarded:number}> {
  const day=localToday();
  const response=await request<{xpAwarded:number;stageChanged:boolean}>(`/api/tasks/${encodeURIComponent(taskId)}/complete`,"POST",{occurrenceDate:day});
- if(response.stageChanged && typeof window !== "undefined") window.dispatchEvent(new Event("momentum:stage-up"));
+ if(response.xpAwarded || response.stageChanged) celebrate();
  const raw=await workspace();
  const task=raw.tasks.find(t=>t.id===taskId);
  if(!task)throw new Error("Task no longer accessible");
@@ -193,7 +200,7 @@ export async function incrementHabit(habitId:string):Promise<{habit:Habit;compan
  // A timer is done in one go: log its full length. Counted habits go up by one.
  const value=item.targetType==="DURATION"?item.targetValue:Math.min(item.targetValue,old+1);
  const awarded = item.status==="ACTIVE" && value!==old ? await request<{xpAwarded:number;moment:ConsistencyMoment|null}>(`/api/habits/${encodeURIComponent(habitId)}/logs/${day}`,"PUT",{value}) : null;
- if(awarded?.xpAwarded && typeof window !== "undefined") window.dispatchEvent(new Event("momentum:stage-up"));
+ if(awarded?.xpAwarded) celebrate();
  const next=await workspace();
  const habit=next.habits.find(h=>h.id===habitId);
  if(!habit)throw new Error("Habit no longer accessible");
@@ -265,10 +272,48 @@ export async function saveFocusSession(sessionKey: string, input: import("../moc
   `/api/focus/sessions/${encodeURIComponent(sessionKey)}/finish`, "POST",
   { focusedSeconds: Math.max(0, Math.floor(input.focusedSeconds)), plannedMinutes: input.plannedMinutes, mode: input.mode, taskId: input.taskId, stopReason: input.stopReason ?? null },
  );
- if (result.xpAwarded > 0 && typeof window !== "undefined") window.dispatchEvent(new Event("momentum:stage-up"));
+ if (result.xpAwarded > 0) celebrate();
  return { ...result, companion: result.companion ?? { stage: "child", xp: 0, xpToNextStage: 400 } };
 }
 export async function quoteFocusXp(focusedSeconds: number): Promise<number> {
  const result = await request<{ xp: number }>(`/api/focus/quote?seconds=${Math.max(0, Math.min(10800, Math.floor(focusedSeconds)))}`);
  return result.xp;
+}
+
+// ---------------------------------------------------------------- progress, check-ins, achievements
+
+type Achievement = import("../mocks/types").Achievement;
+
+export async function getCheckInStatus(): Promise<import("../mocks/types").CheckInStatus> {
+ return request("/api/check-in");
+}
+export async function saveCheckIn(input: import("../mocks/types").CheckInInput): Promise<{ xpAwarded: number; companion: CompanionState }> {
+ const result = await request<{ xpAwarded: number; companion: CompanionState | null }>("/api/check-in", "PUT", input);
+ if (result.xpAwarded > 0) celebrate();
+ return { xpAwarded: result.xpAwarded, companion: result.companion ?? { stage: "child", xp: 0, xpToNextStage: 400 } };
+}
+export async function getProgress(fromIso: string, toIso: string): Promise<import("../mocks/types").ProgressSummary> {
+ return request(`/api/progress?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`);
+}
+export async function getGoalSnapshot(goalId: string): Promise<import("../mocks/types").GoalSnapshot | null> {
+ if (!/^[a-zA-Z0-9_-]{1,128}$/.test(goalId)) return null;
+ try { return await request(`/api/goals/${encodeURIComponent(goalId)}/snapshot`); }
+ catch { return null; }
+}
+export async function getAchievements(): Promise<Achievement[]> {
+ return (await request<{ achievements: Achievement[] }>("/api/achievements")).achievements;
+}
+export async function getAchievement(id: string): Promise<Achievement | null> {
+ if (!/^[a-z0-9-]{1,64}$/.test(id)) return null;
+ try { return (await request<{ achievement: Achievement }>(`/api/achievements/${id}`)).achievement; }
+ catch { return null; }
+}
+export async function setAchievementShared(id: string, isShared: boolean): Promise<Achievement | null> {
+ return (await request<{ achievement: Achievement | null }>(`/api/achievements/${encodeURIComponent(id)}`, "PATCH", { isShared })).achievement;
+}
+export async function getPendingAchievement(): Promise<Achievement | null> {
+ return (await request<{ achievement: Achievement | null }>("/api/achievements/pending")).achievement;
+}
+export async function acknowledgeAchievement(achievementId: string): Promise<void> {
+ await request("/api/achievements/pending", "POST", { achievementId });
 }
