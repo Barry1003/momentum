@@ -77,7 +77,7 @@ const href = (view: View) => `/me/settings?view=${view}`;
 
 // ------------------------------------------------------------------ small parts
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
+export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
   return (
     <button
       type="button"
@@ -92,7 +92,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (val
   );
 }
 
-function ToggleRow({ title, detail, checked, onChange }: { title: string; detail?: string; checked: boolean; onChange: (value: boolean) => void }) {
+export function ToggleRow({ title, detail, checked, onChange }: { title: string; detail?: string; checked: boolean; onChange: (value: boolean) => void }) {
   return (
     <li className="flex items-center justify-between gap-4 py-3">
       <span>
@@ -104,7 +104,7 @@ function ToggleRow({ title, detail, checked, onChange }: { title: string; detail
   );
 }
 
-function Choice<T extends string>({ legend, value, options, onChange }: { legend: string; value: T; options: { value: T; label: string; disabled?: boolean }[]; onChange: (value: T) => void }) {
+export function Choice<T extends string>({ legend, value, options, onChange }: { legend: string; value: T; options: { value: T; label: string; disabled?: boolean }[]; onChange: (value: T) => void }) {
   return (
     <fieldset className="m-0 border-0 p-0">
       <legend className="mb-2 font-heading text-body font-bold text-text">{legend}</legend>
@@ -119,7 +119,7 @@ function Choice<T extends string>({ legend, value, options, onChange }: { legend
   );
 }
 
-function Primary({ children, onClick, disabled, type = "button" }: { children: ReactNode; onClick?: () => void; disabled?: boolean; type?: "button" | "submit" }) {
+export function Primary({ children, onClick, disabled, type = "button" }: { children: ReactNode; onClick?: () => void; disabled?: boolean; type?: "button" | "submit" }) {
   return (
     <button type={type} onClick={onClick} disabled={disabled} className="w-full rounded-full bg-[image:var(--gradient-primary)] py-4 font-heading text-body font-bold text-white shadow-pressable disabled:opacity-60">
       {children}
@@ -127,7 +127,7 @@ function Primary({ children, onClick, disabled, type = "button" }: { children: R
   );
 }
 
-function Secondary({ children, onClick, to }: { children: ReactNode; onClick?: () => void; to?: string }) {
+export function Secondary({ children, onClick, to }: { children: ReactNode; onClick?: () => void; to?: string }) {
   const className = "block w-full rounded-full bg-surface py-4 text-center font-heading text-body font-bold text-accent-strong shadow-raised";
   return to ? (
     <Link href={to} className={className}>
@@ -160,7 +160,7 @@ function Field({ label, value, onChange, tag, placeholder, type = "text", maxLen
   );
 }
 
-function Note({ tone = "tint", title, children }: { tone?: "tint" | "warm" | "success"; title?: string; children: ReactNode }) {
+export function Note({ tone = "tint", title, children }: { tone?: "tint" | "warm" | "success"; title?: string; children: ReactNode }) {
   const tones = { tint: "bg-accent-tint", warm: "bg-[#fdeedd]", success: "bg-success-tint" } as const;
   const titleTone = { tint: "text-accent-strong", warm: "text-[#9a5b12]", success: "text-success" } as const;
   return (
@@ -171,7 +171,7 @@ function Note({ tone = "tint", title, children }: { tone?: "tint" | "warm" | "su
   );
 }
 
-function ErrorLine({ message }: { message: string | null }) {
+export function ErrorLine({ message }: { message: string | null }) {
   return message ? (
     <p role="alert" className="font-heading text-label text-warning">
       {message}
@@ -179,7 +179,7 @@ function ErrorLine({ message }: { message: string | null }) {
   ) : null;
 }
 
-function errorText(err: unknown, fallback: string): string {
+export function errorText(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
 }
 

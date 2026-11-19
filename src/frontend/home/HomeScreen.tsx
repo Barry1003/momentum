@@ -171,7 +171,7 @@ export function HomeScreen({ today }: { today: UseTodayResult }) {
   } else if (tab === "squad" && squad.error) {
     body = <p role="alert" className="rounded-card bg-surface p-5 font-heading text-body text-warning">Unable to load your squad. Refresh to retry.</p>;
   } else if (tab === "squad" && !squad.data?.hasSquad) {
-    body = <div className="rounded-card bg-surface p-6 shadow-raised"><h2 className="font-display text-heading font-extrabold">Your Squad Room is waiting</h2><p className="mt-2 font-heading text-body text-text-muted">Create or join a squad when you are ready.</p><Link href="/onboarding/join" className="mt-4 inline-block font-heading font-bold text-accent-strong">Create or join a squad</Link></div>;
+    body = <div className="rounded-card bg-surface p-6 shadow-raised"><h2 className="font-display text-heading font-extrabold">Your Squad Room is waiting</h2><p className="mt-2 font-heading text-body text-text-muted">Create or join a squad when you are ready.</p><Link href="/squad?view=find" className="mt-4 inline-block font-heading font-bold text-accent-strong">Create or join a squad</Link></div>;
   } else if (tab === "squad") {
     body = (
       <SquadRoom

@@ -1476,3 +1476,85 @@ export async function saveReview(input: { obstacles: string[]; context: string; 
   studio.reviewOpensInDays = 15;
   return delay(structuredClone(review));
 }
+
+// ------------------------------------------------------------------ squad previews (no backend yet)
+
+export interface SharedGoalPrefs {
+  linkTask: boolean;
+  showCount: boolean;
+  showNames: boolean;
+}
+
+export interface SharedGoalPreview {
+  id: string;
+  title: string;
+  outcome: string;
+  dueLabel: string;
+  suggestedBy: string;
+  linkedTaskTitle: string;
+  joined: boolean;
+  prefs: SharedGoalPrefs;
+  joinedCount: number;
+  memberCount: number;
+  daysLeft: number;
+  doneCount: number;
+  totalCount: number;
+  contributors: { name: string; done: number }[];
+}
+
+const SHARED_GOAL_BASE: SharedGoalPreview = {
+  id: "sg-1",
+  title: "Finish our portfolios",
+  outcome: "5 portfolios, shipped.",
+  dueLabel: "15 December",
+  suggestedBy: "Zara",
+  linkedTaskTitle: "Draft portfolio intro",
+  joined: false,
+  prefs: { linkTask: true, showCount: true, showNames: false },
+  joinedCount: 2,
+  memberCount: 5,
+  daysLeft: 26,
+  doneCount: 9,
+  totalCount: 25,
+  contributors: [
+    { name: "Zara", done: 6 },
+    { name: "Malik", done: 3 },
+  ],
+};
+
+let sharedGoal: SharedGoalPreview = SHARED_GOAL_BASE;
+const MY_SHARED_DONE = 5;
+
+/** Preview only: the shared-goal backend does not exist yet. */
+export async function getSharedGoal(): Promise<SharedGoalPreview> {
+  return delay(sharedGoal);
+}
+
+export async function joinSharedGoal(prefs: SharedGoalPrefs): Promise<SharedGoalPreview> {
+  if (sharedGoal.joined) return delay(sharedGoal);
+  const mine = prefs.showCount ? MY_SHARED_DONE : 0;
+  sharedGoal = {
+    ...sharedGoal,
+    joined: true,
+    prefs,
+    joinedCount: sharedGoal.joinedCount + 1,
+    doneCount: sharedGoal.doneCount + mine,
+    contributors: [sharedGoal.contributors[0], { name: "You", done: mine }, ...sharedGoal.contributors.slice(1)].filter((item): item is { name: string; done: number } => Boolean(item)),
+  };
+  return delay(sharedGoal);
+}
+
+export async function leaveSharedGoal(): Promise<SharedGoalPreview> {
+  sharedGoal = SHARED_GOAL_BASE;
+  return delay(sharedGoal);
+}
+
+export const REPORT_REASONS = ["Unkind message", "Spam", "Pressure or harassment", "Something else"] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+/** Preview only: reports are not sent anywhere yet. The reported person is never told. */
+export async function submitSquadReport(input: { reason: string; details: string }): Promise<{ id: string }> {
+  if (!REPORT_REASONS.includes(input.reason as ReportReason)) throw new Error("Choose what’s wrong.");
+  if (input.details.trim().length > 500) throw new Error("Keep details under 500 characters.");
+  return delay({ id: `report-${Date.now()}` });
+}
