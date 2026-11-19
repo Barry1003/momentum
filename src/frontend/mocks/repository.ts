@@ -1558,3 +1558,54 @@ export async function submitSquadReport(input: { reason: string; details: string
   if (input.details.trim().length > 500) throw new Error("Keep details under 500 characters.");
   return delay({ id: `report-${Date.now()}` });
 }
+
+export interface MemberShare {
+  status: string | null;
+  stageLabel: string | null;
+  shares: { label: string; value: string }[];
+}
+
+/** Preview only: what each example member chose to share. Real members share nothing here until the backend exists. */
+const MEMBER_SHARES: Record<string, MemberShare> = {
+  Zara: {
+    status: "Focusing · 18 min",
+    stageLabel: "Young Adult · Stage 4",
+    shares: [
+      { label: "Checked in today", value: "✓" },
+      { label: "45 min deep work", value: "Done 10:40" },
+      { label: "Reading streak", value: "20 sessions" },
+    ],
+  },
+  Malik: {
+    status: "Checked in",
+    stageLabel: "Teen · Stage 3",
+    shares: [
+      { label: "Checked in today", value: "✓" },
+      { label: "Focus hours", value: "30 hours" },
+    ],
+  },
+  Kemi: {
+    status: null,
+    stageLabel: "Teen · Stage 3",
+    shares: [{ label: "Finished “Read chapter 3”", value: "Today" }],
+  },
+  Dayo: { status: null, stageLabel: "Young Adult · Stage 4", shares: [] },
+};
+
+export async function getMemberShare(name: string): Promise<MemberShare> {
+  return delay(MEMBER_SHARES[name] ?? { status: null, stageLabel: null, shares: [] });
+}
+
+export const CHEERS = ["High five", "Keep going", "Proud of you", "You inspired me"] as const;
+export const CHEERS_PER_DAY = 3;
+const cheersSent = new Map<string, number>();
+
+/** Preview only: cheers are not delivered yet. A few per person per day keeps them meaningful. */
+export async function sendCheer(memberId: string, cheer: string): Promise<{ remaining: number }> {
+  if (!CHEERS.includes(cheer as (typeof CHEERS)[number])) throw new Error("Pick a cheer.");
+  const key = `${memberId}:${todayIso()}`;
+  const sent = cheersSent.get(key) ?? 0;
+  if (sent >= CHEERS_PER_DAY) throw new Error("That’s plenty of cheer for today. Try again tomorrow.");
+  cheersSent.set(key, sent + 1);
+  return delay({ remaining: CHEERS_PER_DAY - sent - 1 });
+}

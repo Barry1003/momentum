@@ -2,7 +2,7 @@
 
 import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { CheckOrb, Skeleton } from "../components";
 import { AriTile, Split } from "../habits/views";
 import { CalendarIcon, ChevronRightIcon, MoveIcon, SparkleIcon } from "../home/icons";
@@ -10,23 +10,7 @@ import { cn } from "../lib/cn";
 import type { AuditArea, GrowthStudioState } from "../mocks/types";
 import { Badge, Panel, SubHeader } from "../planner/parts";
 
-function subscribeOnline(callback: () => void) {
-  window.addEventListener("online", callback);
-  window.addEventListener("offline", callback);
-  return () => {
-    window.removeEventListener("online", callback);
-    window.removeEventListener("offline", callback);
-  };
-}
-
-/** Whether the browser thinks it is online. Server render assumes yes. */
-export function useOnline(): boolean {
-  return useSyncExternalStore(
-    subscribeOnline,
-    () => navigator.onLine !== false,
-    () => true,
-  );
-}
+export { useOnline } from "../lib/useOnline";
 
 function AriSays({ face, children }: { face: StaticImageData; children: ReactNode }) {
   return (

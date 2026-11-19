@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSharedGoal, joinSharedGoal, leaveSharedGoal, submitSquadReport } from "../mocks/repository";
+import { CHEERS_PER_DAY, getMemberShare, getSharedGoal, joinSharedGoal, leaveSharedGoal, sendCheer, submitSquadReport } from "../mocks/repository";
 import { parseInviteCode } from "./api";
 
 describe("parseInviteCode", () => {
@@ -46,5 +46,25 @@ describe("squad report preview", () => {
   it("accepts a reason with optional details", async () => {
     const result = await submitSquadReport({ reason: "Spam", details: "Links every hour" });
     expect(result.id).toBeDefined();
+  });
+});
+
+describe("member cheers preview", () => {
+  it("only sends known cheers", async () => {
+    await expect(sendCheer("u-1", "You owe me")).rejects.toThrow();
+  });
+  it("limits cheers per person per day", async () => {
+    for (let i = 0; i < CHEERS_PER_DAY; i++) {
+      const result = await sendCheer("u-2", "High five");
+      expect(result.remaining).toBe(CHEERS_PER_DAY - i - 1);
+    }
+    await expect(sendCheer("u-2", "Keep going")).rejects.toThrow();
+    const other = await sendCheer("u-3", "Proud of you");
+    expect(other.remaining).toBe(CHEERS_PER_DAY - 1);
+  });
+  it("shares nothing for members without example data", async () => {
+    const share = await getMemberShare("Someone new");
+    expect(share.shares.length).toBe(0);
+    expect(share.status).toBeNull();
   });
 });
