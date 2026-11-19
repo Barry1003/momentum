@@ -357,3 +357,19 @@ export async function saveQuietHours(next: import("../mocks/types").QuietHours):
 /** Until a handle is saved, the server suggests one from the saved display name. */
 export async function getProfileDetails(): Promise<import("../mocks/types").ProfileDetails> { return request("/api/settings/profile"); }
 export async function saveProfileDetails(next: import("../mocks/types").ProfileDetails): Promise<import("../mocks/types").ProfileDetails> { return request("/api/settings/profile", "PUT", next); }
+
+// ---------------------------------------------------------------- account
+
+type AccountPreview = import("../mocks/types").AccountPreview;
+export async function getAccount(): Promise<AccountPreview> { return request("/api/account"); }
+export async function requestEmailChange(newEmail: string): Promise<{ previewCode: string | null }> { return request("/api/account/email", "POST", { newEmail }); }
+export async function confirmEmailChange(code: string): Promise<AccountPreview> { return request("/api/account/email/confirm", "POST", { code }); }
+/** The copy is made on demand: mark it ready, and the download link builds it. */
+export async function requestDataExport(): Promise<AccountPreview> {
+ const account = await getAccount();
+ return { ...account, export: { state: "ready", requestedAt: new Date().toISOString(), fileName: `momentum-${localToday()}.json` } };
+}
+export const DATA_EXPORT_URL = "/api/account/export";
+export async function sendDeletionCode(): Promise<void> { await request("/api/account/deletion/code", "POST"); }
+export async function requestAccountDeletion(code: string, confirmWord: string): Promise<AccountPreview> { return request("/api/account/deletion", "POST", { code, confirmWord }); }
+export async function cancelAccountDeletion(): Promise<AccountPreview> { return request("/api/account/deletion", "DELETE"); }

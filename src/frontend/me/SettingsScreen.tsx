@@ -16,14 +16,15 @@ import { useDisplayName } from "../home/useClientValues";
 import { useToday } from "../hooks";
 import { cn } from "../lib/cn";
 import {
+  DATA_EXPORT_URL,
   cancelAccountDeletion,
   confirmEmailChange,
   getAccount,
-  previewTransferOwnership,
   requestAccountDeletion,
   requestDataExport,
   requestEmailChange,
-} from "../mocks/repository";
+  sendDeletionCode,
+} from "../api/liveRepository";
 import { getPrivacy, getProfileDetails, getQuietHours, getReminders, savePrivacy, saveProfileDetails, saveQuietHours, saveReminders } from "../api/liveRepository";
 import type { AccountPreview, PrivacySettings, ProfileDetails, QuietDays, QuietHours, ReminderSettings } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
@@ -665,7 +666,6 @@ function AccountFlow({ view }: { view: View }) {
   const [newEmail, setNewEmail] = useState("");
   const [code, setCode] = useState("");
   const [word, setWord] = useState("");
-  const [previewCode, setPreviewCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -707,7 +707,6 @@ function AccountFlow({ view }: { view: View }) {
       />
     </label>
   );
-  const previewCodeNote = previewCode ? <Note title="Preview">{`No email is sent yet. Use ${previewCode} to try the next step.`}</Note> : null;
 
   switch (view) {
     case "email":
@@ -731,8 +730,9 @@ function AccountFlow({ view }: { view: View }) {
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
-                      const result = await requestEmailChange(newEmail);
-                      setPreviewCode(result.previewCode);
+                      await requestEmailChange(newEmail);
+                      setAccount(await getAccount());
+                      setCode("");
                       router.push(href("emailVerify"));
                     })
                   }
@@ -754,7 +754,7 @@ function AccountFlow({ view }: { view: View }) {
             left={
               <>
                 {codeInput}
-                {previewCodeNote ?? <Note title="Preview">No email is sent yet. Use 482913 to try the next step.</Note>}
+                <Note>The code works for 10 minutes. Check spam if it doesn’t arrive.</Note>
               </>
             }
             right={
@@ -774,7 +774,7 @@ function AccountFlow({ view }: { view: View }) {
                   Confirm new email
                 </Primary>
                 <Secondary onClick={() => void run(async () => {
-                  if (account.pendingEmail) setPreviewCode((await requestEmailChange(account.pendingEmail)).previewCode);
+                  if (account.pendingEmail) await requestEmailChange(account.pendingEmail);
                   showToast("A new code is on its way.");
                 })}>
                   Resend code
@@ -814,10 +814,10 @@ function AccountFlow({ view }: { view: View }) {
           <>
             <SubHeader backHref={href("account")} backLabel="Back to account" kicker="Account · Your data" title="Your copy is ready." subtitle="The link works for 7 days." />
             <Split
-              left={<Note tone="success" title={account.export.fileName ?? "momentum.zip"}>JSON and CSV files · only your own data</Note>}
+              left={<Note tone="success" title={account.export.fileName ?? "momentum.zip"}>JSON file · only your own data</Note>}
               right={
                 <>
-                  <Primary onClick={() => showToast("Preview: the real download comes with the account backend.")}>Download</Primary>
+                  <Primary onClick={() => window.location.assign(DATA_EXPORT_URL)}>Download</Primary>
                   <Secondary to={href("account")}>Back to account</Secondary>
                 </>
               }
@@ -913,7 +913,22 @@ function AccountFlow({ view }: { view: View }) {
             }
             right={
               <>
-                <Primary onClick={() => router.push(account.ownsSquadAlone ? href("deleteOwner") : href("deleteFinal"))}>Continue</Primary>
+                <ErrorLine message={error} />
+                <Primary
+                  disabled={busy}
+                  onClick={() =>
+                    account.ownsSquadAlone
+                      ? router.push(href("deleteOwner"))
+                      : void run(async () => {
+                          await sendDeletionCode();
+                          setCode("");
+                          setWord("");
+                          router.push(href("deleteFinal"));
+                        })
+                  }
+                >
+                  Continue
+                </Primary>
                 <Secondary to={href("account")}>Keep my account</Secondary>
               </>
             }
@@ -931,12 +946,7 @@ function AccountFlow({ view }: { view: View }) {
               <>
                 <Primary
                   onClick={() =>
-                    void run(async () => {
-                      await previewTransferOwnership();
-                      setAccount(await getAccount());
-                      showToast("Preview: ownership passed on. Squad settings will handle this for real.");
-                      router.push(href("deleteFinal"));
-                    })
+                    router.push("/squad?view=transfer")
                   }
                 >
                   Transfer ownership
@@ -960,7 +970,7 @@ function AccountFlow({ view }: { view: View }) {
                   setWord(value);
                   setError(null);
                 }} />
-                <Note title="Preview">No email is sent and nothing is deleted here. Use 482913 to try the flow.</Note>
+                <Note>The code works for 10 minutes. Your account is removed 14 days after you confirm, and you can cancel until then.</Note>
               </>
             }
             right={
@@ -977,6 +987,12 @@ function AccountFlow({ view }: { view: View }) {
                 >
                   Delete my account
                 </Primary>
+                <Secondary onClick={() => void run(async () => {
+                  await sendDeletionCode();
+                  showToast("A new code is on its way.");
+                })}>
+                  Send a new code
+                </Secondary>
                 <Secondary to={href("account")}>Cancel</Secondary>
               </>
             }
@@ -989,7 +1005,7 @@ function AccountFlow({ view }: { view: View }) {
         <>
           <SubHeader backHref={href("account")} backLabel="Back to account" kicker="Account · Delete" title="Deletion is scheduled." subtitle={account.deletionScheduledFor ? `It becomes permanent on ${account.deletionScheduledFor}.` : "Nothing is scheduled."} />
           <Split
-            left={<Note tone="warm" title="Preview">Nothing was deleted. In the real app, signing in again within 14 days cancels it.</Note>}
+            left={<Note tone="warm" title="Nothing is deleted yet">You can cancel any time before that date, and everything stays as it is.</Note>}
             right={
               <>
                 <Primary
