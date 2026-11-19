@@ -33,15 +33,25 @@ function celebrate(): void {
 const dateOnly = (date: string | null | undefined) => date ? date.slice(0, 10) : null;
 const localToday = () => isoDate(new Date());
 
-async function request<T>(path: string, method = "GET", body?: unknown): Promise<T> {
- const response = await fetch(path, {
-  method, credentials: "same-origin", cache: "no-store",
-  ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
- });
+/** A request the server refused or couldn't finish. `status` is 0 when the network failed. */
+export class ApiError extends Error {
+ constructor(message: string, readonly status: number) { super(message); this.name = "ApiError"; }
+}
+
+export async function request<T>(path: string, method = "GET", body?: unknown): Promise<T> {
+ let response: Response;
+ try {
+  response = await fetch(path, {
+   method, credentials: "same-origin", cache: "no-store",
+   ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  });
+ } catch {
+  throw new ApiError("You seem to be offline.", 0);
+ }
  if (!response.ok) {
   const payload = await response.json().catch(() => null) as { error?: { message?: string } | string } | null;
   const message = typeof payload?.error === "string" ? payload.error : payload?.error?.message;
-  throw new Error(message || `Request failed (${response.status})`);
+  throw new ApiError(message || `Request failed (${response.status})`, response.status);
  }
  return response.json() as Promise<T>;
 }

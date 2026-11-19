@@ -11,7 +11,7 @@ import { useShell } from "../home/AppShell";
 import { CheckIcon, MoveIcon, SparkleIcon } from "../home/icons";
 import { useToday } from "../hooks";
 import { cn } from "../lib/cn";
-import { OBSTACLES, getReview, saveReview } from "../mocks/repository";
+import { OBSTACLES, getReview, saveReview } from "./liveStudio";
 import type { ReviewChange, ReviewState } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
 

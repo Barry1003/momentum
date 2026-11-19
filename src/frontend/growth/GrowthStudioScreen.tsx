@@ -26,7 +26,7 @@ import {
   setActionRhythm,
   setCentralGoal,
   applySuggestedGrid,
-} from "../mocks/repository";
+} from "./liveStudio";
 import type { ActionRhythm, AuditArea, AuditIcon, GridAction, GrowthStudioState } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
 import { REVIEW_VIEWS, ReviewViews, type ReviewView } from "./ReviewViews";
@@ -959,7 +959,7 @@ function Main({ children }: { children: ReactNode }) {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {children}
       <p role="status" className="mt-6 font-heading text-meta text-text-muted">
-        Preview: reflections, grids and drafts here are examples, not saved account data yet.
+        Your reflections, grid and drafts are saved privately to your account. Nothing reaches your plan until you accept it.
       </p>
     </main>
   );

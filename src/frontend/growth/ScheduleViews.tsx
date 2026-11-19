@@ -12,7 +12,7 @@ import { useShell } from "../home/AppShell";
 import { CalendarIcon, PlayIcon, ReadIcon, SparkleIcon } from "../home/icons";
 import { useToday } from "../hooks";
 import { cn } from "../lib/cn";
-import { checkSlot, getBusy, getBusyDays, getScheduler, scheduleTask, setQuadrant } from "../mocks/repository";
+import { checkSlot, getBusy, getBusyDays, getScheduler, scheduleTask, setQuadrant } from "./liveStudio";
 import type { BusyBlock, Quadrant, SchedulerItem, SlotCheck } from "../mocks/types";
 import { Badge, Panel, Pill, SubHeader } from "../planner/parts";
 
