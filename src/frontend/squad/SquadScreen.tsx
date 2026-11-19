@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import malikFace from "../assets/faces/malik-face.png";
+import malikFull from "../assets/faces/malik-full.png";
 import zaraFace from "../assets/faces/zara-face.png";
+import zaraFull from "../assets/faces/zara-full.png";
 import { STAGE_ART, type GrowthStage } from "../companion";
 import { FaceAvatar, ProgressBar, Skeleton } from "../components";
 import { AriTile } from "../habits/views";
@@ -16,7 +18,11 @@ import { cn } from "../lib/cn";
 import { MenuRow } from "../me/MeScreen";
 import { Choice, ErrorLine, Note, Primary, Secondary, ToggleRow, errorText } from "../me/SettingsScreen";
 import {
+  CHEERS,
   REPORT_REASONS,
+  getMemberShare,
+  sendCheer,
+  type MemberShare,
   getPrivacy,
   getReminders,
   getSharedGoal,
@@ -46,15 +52,17 @@ type View =
   | "cantLeave"
   | "transfer"
   | "report"
-  | "reportSent";
+  | "reportSent"
+  | "member";
 
-const VIEWS: View[] = ["find", "create", "ready", "join", "joined", "members", "goal", "goalProgress", "settings", "invites", "leave", "cantLeave", "transfer", "report", "reportSent"];
+const VIEWS: View[] = ["find", "create", "ready", "join", "joined", "members", "goal", "goalProgress", "settings", "invites", "leave", "cantLeave", "transfer", "report", "reportSent", "member"];
 /** Views that only make sense once you are in a squad. */
-const NEEDS_SQUAD: View[] = ["ready", "joined", "members", "goal", "goalProgress", "settings", "invites", "leave", "cantLeave", "transfer", "report", "reportSent"];
+const NEEDS_SQUAD: View[] = ["ready", "joined", "members", "goal", "goalProgress", "settings", "invites", "leave", "cantLeave", "transfer", "report", "reportSent", "member"];
 
 export const squadHref = (view: View, extra = "") => `/squad?view=${view}${extra}`;
 
 const FACES: Record<string, typeof zaraFace> = { Zara: zaraFace, Malik: malikFace };
+const FULLS: Record<string, typeof zaraFull> = { Zara: zaraFull, Malik: malikFull };
 const NAME_MAX = 30;
 
 interface Invite {
@@ -561,6 +569,8 @@ function SquadViews({ view, ...context }: Context & { view: View; squad: MySquad
     case "report":
     case "reportSent":
       return <ReportView view={view} {...context} />;
+    case "member":
+      return <MemberView {...context} />;
     default:
       return <MembersView {...context} />;
   }
@@ -687,7 +697,7 @@ function MembersView(context: Context & { squad: MySquad }) {
             const isMe = member.userId === myId;
             return (
               <li key={member.userId}>
-                <Link href="/home?tab=squad" className="flex items-center gap-3 py-3">
+                <Link href={isMe ? "/me" : squadHref("member", `&id=${encodeURIComponent(member.userId)}`)} className="flex items-center gap-3 py-3">
                   <MemberFace name={member.name} isMe={isMe} stage={stage} />
                   <span className="min-w-0 flex-1">
                     <span className="block font-heading text-body font-bold text-text">
@@ -1147,6 +1157,127 @@ function ReportView({ view, squad }: Context & { squad: MySquad; view: "report" 
         {busy ? "Sending…" : "Send report"}
       </Primary>
       <Secondary to={squadHref("settings")}>Cancel</Secondary>
+    </Column>
+  );
+}
+
+// ------------------------------------------------------------------ member profile & cheer
+
+/** Figma 02 · Home · Member profile & cheer. */
+function MemberView({ squad, members, myId, stage }: Context & { squad: MySquad }) {
+  const params = useSearchParams();
+  const member = members.find((item) => item.userId === params.get("id"));
+  const [share, setShare] = useState<MemberShare | null>(null);
+  const [cheer, setCheer] = useState<string>(CHEERS[0]);
+  const [sent, setSent] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const name = member?.name ?? "";
+
+  useEffect(() => {
+    let alive = true;
+    if (!name) return;
+    void getMemberShare(name).then((result) => {
+      if (alive) setShare(result);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [name]);
+
+  if (!member || member.userId === myId) {
+    return (
+      <Column>
+        <SubHeader backHref={squadHref("members")} backLabel="Back to members" kicker={`${squad.name} · Member`} title="Member not found." subtitle="They may have left the squad." />
+        <Secondary to={squadHref("members")}>Back to members</Secondary>
+      </Column>
+    );
+  }
+
+  const send = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await sendCheer(member.userId, cheer);
+      setSent(cheer);
+    } catch (err) {
+      setError(errorText(err, "We couldn’t send that cheer."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const full = FULLS[member.name];
+  return (
+    <Column>
+      <SubHeader backHref={squadHref("members")} backLabel="Back to members" kicker={`${squad.name} · Member`} title={member.name} />
+      <section className="flex min-h-[220px] items-stretch overflow-hidden rounded-[26px] bg-[#f8f0e2] shadow-floating">
+        <div className="flex flex-1 flex-col items-start gap-2 p-5">
+          {share?.status ? (
+            <span className="flex items-center gap-1.5 rounded-full bg-success-tint px-3 py-1.5 font-heading text-meta font-bold text-success">
+              <span aria-hidden className="h-2 w-2 rounded-full bg-success" />
+              {share.status}
+            </span>
+          ) : null}
+          {share?.stageLabel ? <span className="rounded-full bg-surface px-3 py-1.5 font-heading text-meta font-bold text-accent-strong shadow-raised">{share.stageLabel}</span> : null}
+          {member.role === "OWNER" ? <span className="rounded-full bg-surface px-3 py-1.5 font-heading text-meta text-text-muted shadow-raised">Owner of {squad.name}</span> : null}
+        </div>
+        <div className="relative grid w-[120px] shrink-0 place-items-center bg-[#f1e8da] sm:w-[150px]">
+          {full ? <Image src={full} alt={member.name} fill sizes="150px" className="object-contain object-bottom" /> : <FaceAvatar name={member.name} size={88} />}
+        </div>
+      </section>
+      <Panel title={`What ${member.name} shares with ${squad.name}`}>
+        {share === null ? (
+          <Skeleton className="h-24 w-full rounded-[18px]" />
+        ) : share.shares.length === 0 ? (
+          <p className="py-2 font-heading text-body text-text-muted">Nothing shared yet.</p>
+        ) : (
+          <ul>
+            {share.shares.map((item) => (
+              <li key={item.label} className="flex items-center justify-between gap-3 py-1.5">
+                <span className="font-heading text-body font-bold text-text">{item.label}</span>
+                <span className="shrink-0 font-heading text-meta text-text-muted">{item.value}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-2 font-heading text-meta text-text-muted">Only what {member.name} chose to share. No rankings, no private notes.</p>
+      </Panel>
+      <section className="flex flex-col gap-3">
+        <h2 className="font-display text-heading font-extrabold text-text">Send a cheer</h2>
+        <div role="radiogroup" aria-label="Cheer" className="flex flex-wrap gap-2">
+          {CHEERS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={option === cheer}
+              onClick={() => {
+                setCheer(option);
+                setSent(null);
+                setError(null);
+              }}
+            >
+              <Pill selected={option === cheer}>
+                <SparkleIcon className="mr-1.5 h-4 w-4" />
+                {option}
+              </Pill>
+            </button>
+          ))}
+        </div>
+      </section>
+      {sent ? (
+        <section role="status" className="flex items-center gap-3 rounded-[22px] bg-success-tint p-4">
+          <FaceAvatar name="Ari" src={STAGE_ART[stage].face} size={40} />
+          <p className="font-heading text-label text-text">
+            Sent! Ari will wave from your stage in {member.name}’s room.
+          </p>
+        </section>
+      ) : null}
+      <ErrorLine message={error} />
+      <Primary onClick={() => void send()} disabled={busy}>
+        {busy ? "Sending…" : `Send ${cheer.toLowerCase()}`}
+      </Primary>
     </Column>
   );
 }

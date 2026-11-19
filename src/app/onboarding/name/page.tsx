@@ -16,6 +16,8 @@ const GREETING = [
   "First, what should I call you?",
 ] as const;
 
+const NAME_HINT = "Use 2–24 letters, numbers or spaces.";
+
 export default function YourNamePage() {
   const router = useRouter();
   const { data, update } = useOnboarding();
@@ -26,7 +28,7 @@ export default function YourNamePage() {
   async function handleContinue() {
     const result = displayNameSchema.safeParse(name);
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? "Enter a display name.");
+      setError(NAME_HINT);
       return;
     }
     setBusy(true); setError(null);
@@ -42,9 +44,16 @@ export default function YourNamePage() {
     <StepShell>
     <div className="flex flex-col gap-[18px]">
       <OnboardingProgress step={3} />
-      <ScreenHeader title="What should I call you?" onBack={() => router.back()} />
-      <p className="font-heading text-body text-text-muted">A nickname is welcome. No legal name needed.</p>
-      <CompanionDialogue messages={GREETING} />
+      {error === NAME_HINT ? (
+        // Figma 01b · Name check: a calm retry, with the rest of the step kept.
+        <ScreenHeader title="Choose a name you like." subtitle="Your other choices are still here." onBack={() => router.back()} />
+      ) : (
+        <>
+          <ScreenHeader title="What should I call you?" onBack={() => router.back()} />
+          <p className="font-heading text-body text-text-muted">A nickname is welcome. No legal name needed.</p>
+          <CompanionDialogue messages={GREETING} />
+        </>
+      )}
 
       <Field
         label="Display name"
@@ -56,7 +65,7 @@ export default function YourNamePage() {
         helperText={`${name.length} / 24`}
         errorText={error ?? undefined}
       />
-      <Note tone="tint">This is the name your squad sees, if you join one.</Note>
+      {error === NAME_HINT ? null : <Note tone="tint">This is the name your squad sees, if you join one.</Note>}
       <Button variant="primary" disabled={busy} onClick={() => void handleContinue()}>Continue</Button>
     </div>
     </StepShell>
