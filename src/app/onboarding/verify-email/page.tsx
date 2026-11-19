@@ -7,6 +7,7 @@ import { Button, Note, ScreenHeader } from "@/frontend/components";
 import { Companion, GreetingBubble, useGreeting } from "@/frontend/companion";
 import { OnboardingProgress } from "@/frontend/onboarding/OnboardingProgress";
 import { StepShell } from "@/frontend/onboarding/StepShell";
+import { cn } from "@/frontend/lib/cn";
 import { useOnboarding } from "@/frontend/onboarding/OnboardingContext";
 
 const CODE_LENGTH = 6;
@@ -71,6 +72,13 @@ export default function VerifyEmailPage() {
     try {
       const response = await authClient.emailOtp.verifyEmail({ email: data.email, otp: code });
       if (response.error) {
+        const reason = `${response.error.code ?? ""} ${response.error.message ?? ""}`;
+        // Expired codes, or too many tries, need a fresh code: Figma 01b · Code expired.
+        if (/expired|too_many|too many/i.test(reason)) {
+          setIsExpired(true);
+          setResentNotice(false);
+          return;
+        }
         setError(response.error.message || "That code didn't work. Please try again.");
         return;
       }
@@ -105,44 +113,12 @@ export default function VerifyEmailPage() {
     finally { setBusy(false); }
   }
 
-  return (
-    <StepShell>
-    <div className="flex flex-col gap-5">
-      <OnboardingProgress step={2} />
-      <ScreenHeader title={isExpired ? "Let’s try that again" : "Check your inbox"} onBack={() => router.back()} />
+  const email = data.email || "your email";
+  const resendLabel = `0:${secondsLeft.toString().padStart(2, "0")}`;
 
-      <div className="relative flex items-end justify-center gap-2">
-        <Companion
-          stage="child"
-          reaction={greeting.reaction}
-          look={{ room: "lavender", outfit: "original" }}
-          size="card"
-          onTap={greeting.sayHello}
-          onReactionEnd={greeting.onReactionEnd}
-        />
-        <GreetingBubble visible={greeting.hasGreeted} className="mb-16">
-          {isExpired ? "No worries, we’ll send a fresh one." : "I’ll wait right here."}
-        </GreetingBubble>
-      </div>
-
-      {isExpired ? (
-        <Note tone="warning" title="That code has expired">
-          Codes last 10 minutes. You haven’t lost your place — send a new one.
-        </Note>
-      ) : null}
-      {resentNotice && !isExpired ? (
-        <Note tone="success" title="New code on its way">
-          Your old code no longer works.
-        </Note>
-      ) : null}
-
-      <div className="flex items-center justify-between">
-        <p className="font-heading text-meta text-text-muted">We sent a 6-digit code to {data.email || "your email"}.</p>
-        <button type="button" className="shrink-0 font-heading text-meta font-bold text-accent-strong" onClick={() => router.push("/onboarding/create-account")}>
-          Change
-        </button>
-      </div>
-
+  const codeBoxes = (
+    <div className="flex flex-col gap-2">
+      <span className="font-heading text-body font-bold text-text">6-digit code</span>
       <div className="flex gap-2.5">
         {digits.map((digit, index) => (
           <input
@@ -157,19 +133,101 @@ export default function VerifyEmailPage() {
             inputMode="numeric"
             maxLength={1}
             aria-label={`Digit ${index + 1} of ${CODE_LENGTH}`}
-            className="h-[60px] w-full min-w-0 flex-1 rounded-[16px] bg-surface text-center font-display text-title font-extrabold text-text shadow-raised outline-none focus-visible:outline-2 focus-visible:outline-accent"
+            aria-invalid={isExpired}
+            readOnly={isExpired}
+            className={cn(
+              "h-[60px] w-full min-w-0 flex-1 rounded-[16px] bg-surface text-center font-display text-title font-extrabold text-text shadow-raised outline-none focus-visible:outline-2 focus-visible:outline-accent",
+              isExpired ? "outline-2 outline-warning" : "",
+            )}
           />
         ))}
       </div>
+      {isExpired ? (
+        <p role="alert" className="font-heading text-meta text-warning">
+          That code has expired. Codes last 10 minutes.
+        </p>
+      ) : null}
+      {error ? <p role="alert" className="font-heading text-meta text-warning">{error}</p> : null}
+    </div>
+  );
 
-      {error ? <p className="font-heading text-meta text-warning">{error}</p> : null}
+  // Figma 01b · Code expired.
+  if (isExpired) {
+    return (
+      <StepShell>
+        <div className="flex flex-col gap-5">
+          <ScreenHeader kicker="Verify email" title="Let’s try that again." subtitle="You haven’t lost your place." onBack={() => router.back()} />
+          {codeBoxes}
+          <Button variant="primary" disabled={busy} onClick={() => void handleResend()}>
+            Send a new code
+          </Button>
+          <Button variant="secondary" onClick={() => router.push("/onboarding/create-account")}>
+            Change email
+          </Button>
+          <Note tone="tint">Sent to {email}. Check spam if it doesn’t arrive.</Note>
+        </div>
+      </StepShell>
+    );
+  }
+
+  // Figma 01b · New code sent.
+  if (resentNotice) {
+    return (
+      <StepShell>
+        <div className="flex flex-col gap-5">
+          <ScreenHeader kicker="Verify email" title="A fresh start." subtitle={`We sent a new code to ${email}.`} onBack={() => router.back()} />
+          <Note tone="success" title="New code on its way">
+            Your old code no longer works.{" "}
+            {secondsLeft > 0 ? (
+              `You can resend again in ${resendLabel}.`
+            ) : (
+              <button type="button" onClick={() => void handleResend()} className="font-bold text-accent-strong">
+                Resend
+              </button>
+            )}
+          </Note>
+          {codeBoxes}
+          <Button variant="primary" disabled={!isComplete || busy} onClick={() => void handleVerify()}>
+            Verify
+          </Button>
+        </div>
+      </StepShell>
+    );
+  }
+
+  return (
+    <StepShell>
+    <div className="flex flex-col gap-5">
+      <OnboardingProgress step={2} />
+      <ScreenHeader title="Check your inbox" onBack={() => router.back()} />
+
+      <div className="relative flex items-end justify-center gap-2">
+        <Companion
+          stage="child"
+          reaction={greeting.reaction}
+          look={{ room: "lavender", outfit: "original" }}
+          size="card"
+          onTap={greeting.sayHello}
+          onReactionEnd={greeting.onReactionEnd}
+        />
+        <GreetingBubble visible={greeting.hasGreeted} className="mb-16">
+          I’ll wait right here.
+        </GreetingBubble>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="font-heading text-meta text-text-muted">We sent a 6-digit code to {email}.</p>
+        <button type="button" className="shrink-0 font-heading text-meta font-bold text-accent-strong" onClick={() => router.push("/onboarding/create-account")}>
+          Change
+        </button>
+      </div>
+
+      {codeBoxes}
 
       <div className="flex items-center gap-1.5 font-heading text-meta">
         <span className="text-text-muted">Didn&apos;t get it?</span>
         {secondsLeft > 0 ? (
-          <span className="font-bold text-accent-strong">
-            Resend in 0:{secondsLeft.toString().padStart(2, "0")}
-          </span>
+          <span className="font-bold text-accent-strong">Resend in {resendLabel}</span>
         ) : (
           <button type="button" onClick={() => void handleResend()} className="font-bold text-accent-strong">
             Resend
@@ -182,11 +240,6 @@ export default function VerifyEmailPage() {
       <Button variant="primary" disabled={!isComplete || busy} onClick={() => void handleVerify()}>
         Verify and continue
       </Button>
-      {isExpired ? (
-        <Button variant="secondary" onClick={handleResend}>
-          Send a new code
-        </Button>
-      ) : null}
       <p className="text-center font-heading text-meta text-text-muted">Button turns on when all 6 digits are in.</p>
     </div>
     </StepShell>

@@ -85,3 +85,186 @@ describe("habits", () => {
     expect(resumed.pausedFrom).toBeNull();
   });
 });
+
+describe("goals", () => {
+  it("finishes a linked task once, on both the goal and today's list", async () => {
+    const { completeGoalTask, getGoal, getToday } = await import("./repository");
+    const before = (await getGoal("g-1"))!;
+    const first = await completeGoalTask("g-1", "gt-3");
+    expect(first.xpAwarded).toBe(10);
+    expect(first.goal.doneCount).toBe(before.doneCount + 1);
+    expect((await completeGoalTask("g-1", "gt-3")).xpAwarded).toBe(0);
+    expect((await getToday()).tasks.length).toBeGreaterThan(0);
+  });
+
+  it("never lets you finish someone else's or a private task on a shared goal", async () => {
+    const { completeGoalTask } = await import("./repository");
+    expect((await completeGoalTask("g-2", "gt-6")).xpAwarded).toBe(0);
+  });
+
+  it("awards a milestone once and the goal when the last one is reached", async () => {
+    const { confirmMilestone, getGoal } = await import("./repository");
+    const third = await confirmMilestone("g-1", "m-3");
+    expect(third.xpAwarded).toBe(60);
+    expect(third.goalReachedXp).toBeNull();
+    expect((await confirmMilestone("g-1", "m-3")).xpAwarded).toBe(0);
+    const last = await confirmMilestone("g-1", "m-4");
+    expect(last.goalReachedXp).toBe(200);
+    expect((await getGoal("g-1"))?.completedOn).not.toBeNull();
+  });
+
+  it("links a task added from a goal and counts it", async () => {
+    const { addGoalTask, createGoal } = await import("./repository");
+    const fresh = await createGoal({ title: "Learn to cook" });
+    expect(fresh.totalCount).toBe(0);
+    const next = await addGoalTask(fresh.id, { title: "Cook pasta", when: "today", priority: "medium" });
+    expect(next.totalCount).toBe(1);
+    expect(next.tasks[0].todayTaskId).toBeDefined();
+  });
+});
+
+describe("progress and check-ins", () => {
+  it("never counts the future and keeps ranges ordered", async () => {
+    const { getProgress } = await import("./repository");
+    const summary = await getProgress("2999-01-01", "2026-01-01");
+    expect(summary.from <= summary.to).toBe(true);
+    expect(summary.to <= new Date().toISOString().slice(0, 10)).toBe(true);
+  });
+
+  it("awards check-in XP once a day", async () => {
+    const { saveCheckIn, getCheckInStatus } = await import("./repository");
+    const input = { mood: "good" as const, effort: "steady" as const, win: "Closures", obstacle: "", shareCheckedIn: true };
+    expect((await saveCheckIn(input)).xpAwarded).toBe(10);
+    expect((await saveCheckIn(input)).xpAwarded).toBe(0);
+    expect((await getCheckInStatus()).doneToday).toBe(true);
+  });
+
+  it("celebrates a new stage once and never takes it back", async () => {
+    const { getPendingStageUp, acknowledgeStageUp, saveFocusSession, undoCompleteTask, completeTask, getToday } = await import("./repository");
+    for (let i = 0; i < 70 && !(await getPendingStageUp()); i += 1) {
+      await saveFocusSession(`grow-${i}`, { taskId: null, focusedSeconds: 3600, plannedMinutes: 60, mode: "solo" });
+    }
+    const event = await getPendingStageUp();
+    expect(event?.stage).toBe("youngAdult");
+    await acknowledgeStageUp();
+    expect(await getPendingStageUp()).toBeNull();
+    const open = (await getToday()).tasks.find((task) => !task.isDone);
+    if (open) {
+      await completeTask(open.id);
+      const undone = await undoCompleteTask(open.id);
+      expect(undone.companion.stage).toBe("youngAdult");
+    }
+  });
+});
+
+describe("achievements and studio", () => {
+  it("keeps achievements private until shared", async () => {
+    const { getAchievement, setAchievementShared } = await import("./repository");
+    expect((await getAchievement("deep-diver"))?.isShared).toBe(false);
+    expect((await setAchievementShared("deep-diver", true))?.isShared).toBe(true);
+    expect((await setAchievementShared("bookworm", true))?.isShared).toBe(false);
+  });
+
+  it("only applies looks the person has", async () => {
+    const { saveLook } = await import("./repository");
+    const studio = await saveLook({ room: "midnight", plinth: "mint", name: "Ari" });
+    expect(studio.room).not.toBe("midnight");
+    expect(studio.plinth).toBe("mint");
+    const sage = await saveLook({ room: "sage" });
+    expect(sage.room).toBe("sage");
+  });
+});
+
+describe("settings and account", () => {
+  it("validates handles and quiet hours", async () => {
+    const { saveProfileDetails, saveQuietHours } = await import("./repository");
+    await expect(saveProfileDetails({ handle: "@zara", intention: "" })).rejects.toThrow();
+    await expect(saveProfileDetails({ handle: "a b", intention: "" })).rejects.toThrow();
+    expect((await saveProfileDetails({ handle: "@Ari_Builds", intention: "x" })).handle).toBe("ari_builds");
+    await expect(saveQuietHours({ enabled: true, from: "22:00", to: "22:00", days: "everyDay", customDays: [] })).rejects.toThrow();
+  });
+
+  it("needs the code, the word and no solo squad to schedule deletion", async () => {
+    const { requestAccountDeletion, previewTransferOwnership } = await import("./repository");
+    await expect(requestAccountDeletion("482913", "DELETE")).rejects.toThrow();
+    await previewTransferOwnership();
+    await expect(requestAccountDeletion("000000", "DELETE")).rejects.toThrow();
+    await expect(requestAccountDeletion("482913", "delete")).rejects.toThrow();
+    expect((await requestAccountDeletion("482913", "DELETE")).deletionScheduledFor).not.toBeNull();
+  });
+});
+
+describe("growth studio", () => {
+  it("keeps ratings 1–5 and moves on to the next area", async () => {
+    const { rateArea } = await import("./repository");
+    await expect(rateArea("health", 7, "")).rejects.toThrow();
+    const state = await rateArea("health", 3, "  ok  ");
+    expect(state.areas.find((area) => area.id === "health")?.note).toBe("ok");
+    expect(state.lastPausedAreaId).toBe("money");
+  });
+
+  it("accepts a draft into the plan once, never twice", async () => {
+    const { acceptGridAction, getHabits } = await import("./repository");
+    const before = (await getHabits()).habits.length;
+    await acceptGridAction("ga-3", "habit", { days: [0, 1, 2, 3, 4, 5, 6], targetMinutes: 20, reminderTime: null });
+    const again = await acceptGridAction("ga-3", "habit", { days: [0, 1, 2, 3, 4, 5, 6], targetMinutes: 20, reminderTime: null });
+    expect((await getHabits()).habits.length).toBe(before + 1);
+    expect(again.grid?.actions.find((action) => action.id === "ga-3")?.status).toBe("accepted");
+  });
+
+  it("limits an area to 8 actions", async () => {
+    const { saveGridAction } = await import("./repository");
+    for (let i = 0; i < 8; i += 1) {
+      await saveGridAction({ id: null, areaId: "a-8", title: `Step ${i}`, minutes: 10, addAs: "task", rhythm: "weekly" }).catch(() => undefined);
+    }
+    await expect(saveGridAction({ id: null, areaId: "a-8", title: "One more", minutes: 10, addAs: "task", rhythm: "weekly" })).rejects.toThrow();
+  });
+});
+
+describe("scheduler and review", () => {
+  it("refuses invalid and clashing times and suggests a free one", async () => {
+    const { checkSlot, scheduleTask } = await import("./repository");
+    const local = new Date();
+    const iso = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, "0")}-${String(local.getDate()).padStart(2, "0")}`;
+    const invalid = await checkSlot("task-3", iso, "25:90");
+    expect(invalid.reason).toBe("invalid");
+    const clash = await checkSlot("task-3", iso, "10:10");
+    expect(clash.reason).toBe("conflict");
+    expect(clash.suggestion).not.toBeNull();
+    await expect(scheduleTask("task-3", { date: iso, time: "10:10", repeatsDaily: false })).rejects.toThrow();
+    await expect(scheduleTask("task-3", { date: "2000-01-01", time: "17:30", repeatsDaily: false })).rejects.toThrow();
+    const saved = await scheduleTask("task-3", { date: iso, time: "17:30", repeatsDaily: true });
+    expect(saved.time).toBe("17:30");
+  });
+
+  it("saves a review once and turns changes into drafts", async () => {
+    const { getReview, saveReview } = await import("./repository");
+    const review = await getReview();
+    const first = await saveReview({ obstacles: ["Time", "Nope"], context: "Busy", changes: review.suggestions, finish: true });
+    expect(first.xpAwarded).toBe(40);
+    expect(first.obstacles).toEqual(["Time"]);
+    expect(first.suggestions.filter((change) => change.draftActionId).length).toBe(2);
+    const again = await saveReview({ obstacles: [], context: "", changes: first.suggestions, finish: true });
+    expect(again.status).toBe("saved");
+  });
+});
+
+describe("studio states", () => {
+  it("fails one save on request and keeps the data", async () => {
+    const { simulateStudioSaveFailure, rateArea, getGrowthStudio } = await import("./repository");
+    const before = (await getGrowthStudio()).areas.find((area) => area.id === "home");
+    simulateStudioSaveFailure();
+    await expect(rateArea("home", 4, "x")).rejects.toThrow();
+    expect((await getGrowthStudio()).areas.find((area) => area.id === "home")?.rating).toBe(before?.rating ?? null);
+    expect((await rateArea("home", 4, "x")).areas.find((area) => area.id === "home")?.rating).toBe(4);
+  });
+
+  it("re-points an orphaned grid without losing its areas", async () => {
+    const { previewOrphanGrid, setCentralGoal } = await import("./repository");
+    const orphan = await previewOrphanGrid();
+    const count = orphan.grid?.areas.length;
+    const fixed = await setCentralGoal({ goalId: "g-3", why: "", keepGrid: true });
+    expect(fixed.grid?.goalId).toBe("g-3");
+    expect(fixed.grid?.areas.length).toBe(count);
+  });
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import ariYoungAdult from "../assets/companion/ari-youngAdult.png";
 import malikFace from "../assets/faces/malik-face.png";
@@ -85,9 +86,9 @@ export function SquadRoom({ members, sharedTask, onCompleteShared, onShare, onCh
               {focusing} focusing right now
             </p>
           </div>
-          <span className="rounded-full bg-surface px-3 py-1.5 font-heading text-label font-bold text-text shadow-raised">
+          <Link href="/squad?view=members" aria-label="See all squad members" className="rounded-full bg-surface px-3 py-1.5 font-heading text-label font-bold text-text shadow-raised">
             All {members.length + 1}
-          </span>
+          </Link>
         </div>
 
         <div className="relative mt-4 grid grid-cols-3 items-end gap-2 pb-6">

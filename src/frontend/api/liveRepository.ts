@@ -74,7 +74,7 @@ function habitOf(raw: RawHabit, history: HabitTracker["history"], day = localTod
  const pausedNow = raw.status === "PAUSED" && (!pausedUntil || pausedUntil >= day);
  const pausedFrom = pausedNow ? dateOnly(raw.pausedAt) : null;
  return {
-  id: raw.id, name: raw.name, detail: raw.description ?? undefined,
+  id: raw.id, name: raw.name, detail: raw.description ?? (raw.targetType === "DURATION" ? `${raw.targetValue} min` : undefined),
   icon: (["water","move","read","sparkle"].includes(raw.icon ?? "") ? raw.icon : "sparkle") as Habit["icon"],
   targetCount: raw.targetValue, completedCount: history[raw.id]?.[day] ?? 0,
   kind: raw.targetType === "COUNT" ? "target" : raw.targetType === "DURATION" ? "timer" : "tick",
@@ -189,7 +189,8 @@ export async function incrementHabit(habitId:string):Promise<{habit:Habit;compan
  const raw=await workspace(),item=raw.habits.find(h=>h.id===habitId);
  if(!item)throw new Error("Habit no longer accessible");
  const day=localToday(),old=historyOf(raw)[habitId]?.[day]??0;
- const value=Math.min(item.targetValue,old+1);
+ // A timer is done in one go: log its full length. Counted habits go up by one.
+ const value=item.targetType==="DURATION"?item.targetValue:Math.min(item.targetValue,old+1);
  if(item.status==="ACTIVE"&&value!==old)await request(`/api/habits/${encodeURIComponent(habitId)}/logs/${day}`,"PUT",{value});
  const next=await workspace();
  const habit=next.habits.find(h=>h.id===habitId);

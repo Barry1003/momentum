@@ -92,9 +92,10 @@ export function HabitTabs({ active, pills }: { active: HabitsView; pills?: boole
   );
 }
 
-export function Split({ left, right }: { left: ReactNode; right: ReactNode }) {
+/** Two columns from `from` up (tablet "md" or desktop "lg"), one column below. */
+export function Split({ left, right, from = "lg" }: { left: ReactNode; right: ReactNode; from?: "md" | "lg" }) {
   return (
-    <div className="mt-5 grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-6">
+    <div className={from === "md" ? "mt-5 grid gap-5 md:grid-cols-2 md:items-start md:gap-6" : "mt-5 grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-6"}>
       <div className="flex flex-col gap-5">{left}</div>
       <div className="flex flex-col gap-5">{right}</div>
     </div>
@@ -127,7 +128,7 @@ function SecondaryButton({ children, onClick, href }: { children: ReactNode; onC
   );
 }
 
-function AriTile({ art, label, title, body, children }: { art: StaticImageData; label: string; title: string; body: string; children?: ReactNode }) {
+export function AriTile({ art, label, title, body, children }: { art: StaticImageData; label: string; title: string; body: string; children?: ReactNode }) {
   return (
     <section className="flex items-stretch overflow-hidden rounded-[26px] bg-[#f8f0e2] shadow-floating">
       <div className="flex flex-1 flex-col justify-center p-5">
@@ -146,11 +147,12 @@ function AriTile({ art, label, title, body, children }: { art: StaticImageData; 
 // ------------------------------------------------------------------ Today
 
 function TodayRow({ habit, todayIso, pending, onLog, onResume }: { habit: Habit; todayIso: string; pending: number; onLog: () => void; onResume: () => void }) {
-  const count = Math.min(habit.targetCount, habit.completedCount + pending);
+  // A timer is logged in full with one "Done"; counted habits go up one tap at a time.
+  const count = habit.kind === "timer" && pending > 0 ? habit.targetCount : Math.min(habit.targetCount, habit.completedCount + pending);
   const done = count >= habit.targetCount;
   const paused = isPausedNow(habit, todayIso) && !habit.isScheduledToday;
   const notYet = habit.startsOn && habit.startsOn > todayIso;
-  const isCounted = habit.kind === "target" || habit.targetCount > 1;
+  const isCounted = habit.kind === "target";
   const display = { ...habit, completedCount: count };
 
   let action: ReactNode;
@@ -694,6 +696,7 @@ type WhenChoice = "every" | "weekdays" | "pick";
 
 export interface NewHabitValues {
   name: string;
+  detail?: string;
   kind: HabitKind;
   targetCount: number;
   unit: string;
@@ -740,6 +743,7 @@ export function NewHabit({
       if (!Number.isInteger(targetCount) || targetCount < 2 || targetCount > 99) return setError("Targets are whole numbers from 2 to 99.");
     }
     if (kind === "timer") {
+      // The server stores a timer's length as its target in minutes; one "Done" logs it in full.
       targetCount = Number(minutes);
       if (!Number.isInteger(targetCount) || targetCount < 1 || targetCount > 240) return setError("Timers are 1 to 240 minutes.");
     }
@@ -752,6 +756,7 @@ export function NewHabit({
         kind,
         targetCount,
         unit: kind === "target" ? unit.trim().slice(0, 20) || "times" : kind === "timer" ? "min" : "",
+        detail: kind === "timer" ? `${Number(minutes)} min` : undefined,
         scheduleDays,
         reminderTime: reminderOn ? reminder : null,
         goalName: goal === "No goal" ? null : goal,
@@ -886,7 +891,7 @@ export function EditHabit({
   const [editingTarget, setEditingTarget] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const unit = habit.kind === "timer" ? "minutes" : habit.unit ?? (habit.targetCount > 1 ? "times" : "time");
+  const unit = habit.kind === "timer" ? "minutes" : habit.kind === "target" ? habit.unit ?? "times" : "time a day";
 
   async function save() {
     const value = Number(target);

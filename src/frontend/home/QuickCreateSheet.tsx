@@ -37,7 +37,6 @@ export interface QuickCreateSheetProps {
   onClose: () => void;
   onAddTask: (input: NewTaskInput) => Promise<void>;
   onAddHabit: (input: NewHabitInput) => Promise<void>;
-  onNotice: (message: string) => void;
 }
 
 function ToggleChip({ label, pressed, onToggle }: { label: string; pressed: boolean; onToggle: () => void }) {
@@ -57,7 +56,7 @@ function ToggleChip({ label, pressed, onToggle }: { label: string; pressed: bool
 }
 
 /** Quick create (+): add a task, habit, goal or start focus from anywhere. Figma 02 · Home, step 04. */
-export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddHabit, onNotice }: QuickCreateSheetProps) {
+export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddHabit }: QuickCreateSheetProps) {
   const router = useRouter();
   const [kind, setKind] = useState<QuickCreateKind>(initialKind);
   const [title, setTitle] = useState("");
@@ -92,7 +91,7 @@ export function QuickCreateSheet({ open, initialKind, onClose, onAddTask, onAddH
         await onAddHabit({ name: trimmed, targetCount: habitTarget });
       } else if (kind === "goal") {
         await createGoal(trimmed, !isPrivate);
-        onNotice(`Created goal “${trimmed}”`);
+        router.push("/planner?view=goals");
       } else {
         router.push("/focus");
       }
