@@ -5,6 +5,7 @@ import { localDateInTimezone } from "@/modules/habits/validation";
 import { accessibleGoal } from "@/modules/planning/service";
 import { SquadError } from "@/modules/squads/policy";
 import { XP } from "@/modules/xp/config";
+import { cheersSentCount } from "@/modules/social/service";
 import { appendXp, companionFromAvatar } from "@/modules/xp/service";
 import { ACHIEVEMENTS, formatDay, newlyEarned, viewOf, type Metrics } from "./catalog";
 import { addDays, clampRange, datesBetween, progressSummary, type ProgressHabit } from "./rules";
@@ -196,8 +197,9 @@ async function metricsFor(userId: string): Promise<Metrics> {
     bestHabitRun = Math.max(bestHabitRun, currentRun(rules, history, today));
     if (habit.icon === "read") for (const log of habit.logs) if (log.value >= habit.targetValue) reading.add(iso(log.date));
   }
-  // Cheers and the Life Audit arrive with squad social and Growth Studio; until then they count zero.
-  return { tasksCompleted, focusDays, longFocusSessions, bestHabitRun, readingDays: reading.size, cheersSent: 0, auditReflections: 0 };
+  // The Life Audit arrives with Growth Studio; until then it counts zero.
+  const cheersSent = await cheersSentCount(userId);
+  return { tasksCompleted, focusDays, longFocusSessions, bestHabitRun, readingDays: reading.size, cheersSent, auditReflections: 0 };
 }
 
 /** Give any achievements the person has just reached: record, celebrate privately, award XP once. */
