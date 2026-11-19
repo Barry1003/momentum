@@ -639,7 +639,7 @@ function Shell({ children }: { children: ReactNode }) {
     <main className="mx-auto w-full max-w-[1180px] px-4 pt-7 pb-36 sm:px-8 md:pt-10 md:pb-16">
       {children}
       <p role="status" className="mt-6 font-heading text-meta text-text-muted">
-        Preview: goals, milestones and XP here are examples, not saved account data yet.
+        Your goal, its tasks, milestones and XP are saved to your account.
       </p>
     </main>
   );

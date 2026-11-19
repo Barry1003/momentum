@@ -169,7 +169,7 @@ export async function addTask(input:NewTaskInput):Promise<{task:Task}> {
  const squadId=input.shareWithSquad?raw.squads[0]?.squadId:undefined;
  if(input.shareWithSquad && !squadId)throw new Error("Join a squad before sharing tasks");
  if(input.repeats && input.repeats!=="never")throw new Error("Recurring tasks are not yet available");
- if(input.when==="pickDate"&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(input.selectedDate??""))throw new Error("Choose a valid date");
+ if(input.when==="pickDate"&&!/^\d{4}-\d{2}-\d{2}$/.test(input.selectedDate??""))throw new Error("Choose a valid date");
  const dueDate=input.when==="noDate"?undefined:input.when==="tomorrow"?addDays(day,1):input.when==="pickDate"?input.selectedDate:day;
  const result=await request<{task:RawTask}>("/api/tasks","POST",{
   title:input.title,dueDate,durationMin:input.durationMinutes,
@@ -316,4 +316,32 @@ export async function getPendingAchievement(): Promise<Achievement | null> {
 }
 export async function acknowledgeAchievement(achievementId: string): Promise<void> {
  await request("/api/achievements/pending", "POST", { achievementId });
+}
+
+// ---------------------------------------------------------------- goal detail
+
+type GoalDetail = import("../mocks/types").GoalDetail;
+const goalPath = (goalId: string) => `/api/goals/${encodeURIComponent(goalId)}`;
+const fallbackCompanion: CompanionState = { stage: "child", xp: 0, xpToNextStage: 400 };
+
+export async function getGoal(goalId: string): Promise<GoalDetail | null> {
+ if (!/^[a-zA-Z0-9_-]{1,128}$/.test(goalId)) return null;
+ try { return (await request<{ goal: GoalDetail }>(`${goalPath(goalId)}/detail`)).goal; }
+ catch { return null; }
+}
+export async function addGoalTask(goalId: string, input: { title: string; when: import("../mocks/types").TaskWhen; priority: import("../mocks/types").TaskPriority; date?: string }): Promise<GoalDetail> {
+ return (await request<{ goal: GoalDetail }>(`${goalPath(goalId)}/tasks`, "POST", input)).goal;
+}
+export async function completeGoalTask(goalId: string, taskId: string): Promise<{ goal: GoalDetail; companion: CompanionState; xpAwarded: number }> {
+ const result = await request<{ goal: GoalDetail; companion: CompanionState | null; xpAwarded: number }>(`${goalPath(goalId)}/tasks/${encodeURIComponent(taskId)}/complete`, "POST");
+ if (result.xpAwarded) celebrate();
+ return { ...result, companion: result.companion ?? fallbackCompanion };
+}
+export async function toggleCriterion(goalId: string, milestoneId: string, criterionId: string): Promise<GoalDetail> {
+ return (await request<{ goal: GoalDetail }>(`${goalPath(goalId)}/milestones/${encodeURIComponent(milestoneId)}/criteria/${encodeURIComponent(criterionId)}`, "PATCH")).goal;
+}
+export async function confirmMilestone(goalId: string, milestoneId: string): Promise<{ goal: GoalDetail; companion: CompanionState; xpAwarded: number; goalReachedXp: number | null }> {
+ const result = await request<{ goal: GoalDetail; companion: CompanionState | null; xpAwarded: number; goalReachedXp: number | null }>(`${goalPath(goalId)}/milestones/${encodeURIComponent(milestoneId)}/confirm`, "POST");
+ if (result.xpAwarded) celebrate();
+ return { ...result, companion: result.companion ?? fallbackCompanion };
 }
