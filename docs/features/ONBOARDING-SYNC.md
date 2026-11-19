@@ -35,7 +35,7 @@
 
 ## Important environment keys
 
-Set `DATABASE_URL` (Neon pooled), `DATABASE_URL_UNPOOLED` (migration direct URL), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, and `AUTH_EMAIL_FROM` in private environment settings. Use different test and production databases/keys; **never paste real URLs or keys into GitHub or chat**.
+Set `DATABASE_URL` (Neon pooled), `DATABASE_URL_UNPOOLED` (migration direct URL), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`, and `AUTH_EMAIL_FROM` in private environment settings. Use different test and production databases/keys; **never paste real URLs or keys into GitHub or chat**.
 
 ## Required integration and release gates
 

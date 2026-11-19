@@ -1,10 +1,12 @@
 import "server-only";
 import { getPrisma } from "@/db/client";
-import type { Prisma, XpSource } from "@/generated/prisma/client";
+import type { XpSource } from "@/generated/prisma/client";
 import { SquadError } from "@/modules/squads/policy";
 import { permanentStage, nextThreshold, STAGES, type Stage } from "./config";
 
-export type Tx = Prisma.TransactionClient;
+// Derived from the live (retry-extended) client, not Prisma.TransactionClient,
+// since extending the client with $extends changes the shape $transaction's callback receives.
+export type Tx = Parameters<Parameters<ReturnType<typeof getPrisma>["$transaction"]>[0]>[0];
 export type Award = { source: XpSource; sourceId: string; key: string; amount: number };
 
 const names = {
