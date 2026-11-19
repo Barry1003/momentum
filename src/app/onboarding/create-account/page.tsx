@@ -47,7 +47,10 @@ export default function CreateAccountPage() {
         email: validEmail.data, password, name: "Momentum member",
       });
       if (response.error) {
-        setNotice(response.error.message || "Could not create your account.");
+        // The user may already have an unverified account from an earlier attempt.
+        // Allow OTP recovery instead of forcing a second signup.
+        setCanRetryVerification(true);
+        setNotice(response.error.message || "Could not create your account. If you already signed up, request a verification code below.");
         return;
       }
       // Record the verified target before sending so retries never recreate the account.
