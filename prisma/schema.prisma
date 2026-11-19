@@ -30,6 +30,7 @@ model User {
   habits Habit[]
   habitLogs HabitLog[]
   xpEvents XpEvent[]
+  focusSessions FocusSession[]
   growthEvents GrowthEvent[]
 
   @@map("user")
@@ -439,4 +440,32 @@ model GrowthEvent {
 
   @@index([userId, kind, acknowledgedAt, createdAt])
   @@map("growth_event")
+}
+
+enum FocusMode {
+  SOLO
+  SQUAD
+}
+
+// One focus round. The server stamps the start, so credited time can't exceed real time.
+model FocusSession {
+  id             String    @id @default(cuid())
+  userId         String
+  clientKey      String
+  taskId         String?
+  mode           FocusMode @default(SOLO)
+  plannedMinutes Int
+  startedAt      DateTime  @default(now())
+  endedAt        DateTime?
+  focusedSeconds Int       @default(0)
+  verified       Boolean   @default(true)
+  xpAwarded      Int       @default(0)
+  stopReason     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clientKey])
+  @@index([userId, endedAt])
+  @@map("focus_session")
 }

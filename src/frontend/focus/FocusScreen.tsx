@@ -12,7 +12,8 @@ import { useToday } from "../hooks";
 import { usePlanner } from "../hooks/usePlanner";
 import { CheckIcon, ChevronRightIcon, MoveIcon, PlayIcon, SparkleIcon, WaterIcon } from "../home/icons";
 import { cn } from "../lib/cn";
-import { getFocusLobby, quoteFocusXp, saveFocusSession } from "../mocks/repository";
+import { quoteFocusXp, saveFocusSession, startFocusSession } from "../api/liveRepository";
+import { getFocusLobby } from "../mocks/repository";
 import type { FocusLobby, Task } from "../mocks/types";
 import { useNow } from "./clock";
 import {
@@ -197,7 +198,15 @@ export function FocusScreen() {
   function start(mode: "solo" | "squad") {
     if (mode === "squad" && lobby) dispatch({ type: "setLength", minutes: lobby.lengthMinutes });
     setMarkedDone("no");
-    dispatch({ type: "start", now: Date.now(), mode, task: setupTask, sessionKey: newSessionKey() });
+    const sessionKey = newSessionKey();
+    dispatch({ type: "start", now: Date.now(), mode, task: setupTask, sessionKey });
+    if (!isPreview) announceStart(sessionKey, mode, setupTask?.id ?? null);
+  }
+
+  /** Lets the server stamp the start. If it fails (offline), the round still saves, without XP. */
+  function announceStart(sessionKey: string, mode: "solo" | "squad", taskId: string | null) {
+    const plannedMinutes = mode === "squad" && lobby ? lobby.lengthMinutes : state.lengthMinutes;
+    void startFocusSession(sessionKey, { plannedMinutes, mode, taskId }).catch(() => undefined);
   }
 
   function goHome() {
@@ -567,7 +576,9 @@ export function FocusScreen() {
             <FocusButton
               onClick={() => {
                 setMarkedDone("no");
-                dispatch({ type: "nextRound", now: Date.now(), sessionKey: newSessionKey() });
+                const sessionKey = newSessionKey();
+                dispatch({ type: "nextRound", now: Date.now(), sessionKey });
+                if (!isPreview) announceStart(sessionKey, state.mode, state.task?.id ?? null);
               }}
             >
               Start next round
@@ -734,7 +745,7 @@ export function FocusScreen() {
               {lobby ? ` · ${lobby.members.filter((member) => member.status === "ready").length} in ${squadName} now` : ""}
             </button>
             {isPreview ? null : (
-              <p className="text-center font-heading text-meta text-white/55">Preview: sessions and XP here are examples, not saved account data yet.</p>
+              <p className="text-center font-heading text-meta text-white/55">Your sessions and XP are saved to your account. The squad lobby still shows example members.</p>
             )}
           </div>
         </FocusFrame>
