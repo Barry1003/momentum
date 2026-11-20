@@ -41,3 +41,5 @@ Status: **implementation candidate, not approved for deployment**. Base commit: 
 7. Redeploy only after review; do not claim end-to-end readiness from source review alone.
 
 Official SDK guidance: `neondatabase/neon-pkgs/packages/auth/NEXT-JS.md` (Next.js 16+).
+
+Lockfile regenerated through one-time branch CI helper; run full checks on latest head before merge.
