@@ -37,7 +37,7 @@ export default function SignInPage() {
         setNotice(response.error.message || "Unable to sign in. Check your details.");
         return;
       }
-      router.replace("/");
+      router.replace("/onboarding/auth-complete");
       router.refresh();
     } catch { setNotice("Could not contact the account service."); }
     finally { setBusy(false); }
@@ -110,7 +110,7 @@ export default function SignInPage() {
           }
           setBusy(true);
           try {
-            const response = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+            const response = await authClient.signIn.social({ provider: "google", callbackURL: "/onboarding/auth-complete" });
             if (response.error) setNotice(response.error.message || "Google sign-in failed.");
           } catch { setNotice("Could not start Google sign-in."); }
           finally { setBusy(false); }
