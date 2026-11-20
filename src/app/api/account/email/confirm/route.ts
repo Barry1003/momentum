@@ -1,12 +1,15 @@
-import { apiError, jsonBody, requiredUser, result } from "@/modules/squads/http";
-import { confirmEmailChange } from "@/modules/account/service";
-import { confirmCodeSchema } from "@/modules/account/validation";
+import { NextResponse } from "next/server";
+import { requiredUser } from "@/modules/squads/http";
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  try {
-    const user = await requiredUser();
-    const { code } = await jsonBody(request, confirmCodeSchema);
-    return result(await confirmEmailChange(user.id, code));
-  } catch (error) { return apiError(error); }
+/**
+ * Legacy local-email mutation must not diverge from Neon-managed identity.
+ * Re-enable only with a verified Neon Auth email-change flow and data sync.
+ */
+export async function POST() {
+  await requiredUser();
+  return NextResponse.json(
+    { error: { code: "MANAGED_AUTH_REQUIRED", message: "Email changes are temporarily unavailable during the authentication migration." } },
+    { status: 409, headers: { "Cache-Control": "private, no-store" } },
+  );
 }
