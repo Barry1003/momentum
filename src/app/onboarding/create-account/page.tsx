@@ -57,7 +57,7 @@ export default function CreateAccountPage() {
       update({ email: validEmail.data });
       setPassword("");
       const sent = await authClient.emailOtp.sendVerificationOtp({
-        email: validEmail.data, type: "email-verification",
+        email: validEmail.data,
       });
       if (sent.error) {
         setCanRetryVerification(true);
@@ -85,7 +85,7 @@ export default function CreateAccountPage() {
     setNotice(null);
     try {
       const response = await authClient.emailOtp.sendVerificationOtp({
-        email: valid.data, type: "email-verification",
+        email: valid.data,
       });
       if (response.error) {
         setNotice("We could not send the verification code. Check the email service and try again.");
