@@ -77,7 +77,7 @@ export default function CantGetInPage() {
     setBusy(true);
     setError(null);
     try {
-      const response = await authClient.emailOtp.sendVerificationOtp({ email: valid.data, type: "sign-in" });
+      const response = await authClient.emailOtp.sendVerificationOtp({ email: valid.data });
       if (response.error) {
         setError(response.error.message || "We couldn’t send a code. Try again in a minute.");
         return;
