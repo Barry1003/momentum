@@ -70,7 +70,7 @@ export default function AuthCompletePage() {
       {result ? (
         <div className="flex flex-col gap-4 text-center">
           <p role="alert" className="font-heading text-body text-text-muted">
-            {result.state === "verify-email" ? "Verify your email to continue." : result.message}
+            {result.state === "retry" || result.state === "sign-in" ? result.message : "Verify your email to continue."}
           </p>
           {result.state === "retry" ? (
             <button type="button" onClick={() => { setResult(null); setAttempt(value => value + 1); }} className="rounded-full bg-accent-strong px-5 py-3 font-heading font-bold text-white">Retry connection</button>
