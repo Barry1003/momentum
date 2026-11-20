@@ -1,8 +1,5 @@
 "use client";
-import { createAuthClient } from "better-auth/react";
-import { emailOTPClient } from "better-auth/client/plugins";
+import { createAuthClient } from "@neon/auth/next";
 
-// Same-origin auth endpoints; do not ship a server secret to the browser.
-export const authClient = createAuthClient({
-  plugins: [emailOTPClient()],
-});
+// Uses /api/auth through the Next.js proxy; no public Google OAuth secrets.
+export const authClient = createAuthClient();
