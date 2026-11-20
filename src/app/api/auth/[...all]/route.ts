@@ -1,23 +1,26 @@
-import { auth } from "@/modules/auth/managed";
+import { getManagedAuth } from "@/modules/auth/managed";
 
 export const runtime = "nodejs";
 
-const handlers = auth.handler();
-
-// The Neon SDK names its catch-all parameter "path". Momentum's existing
-// public route is [...all]; translate the parameter without changing the URL.
+type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type RouteContext = { params: Promise<{ all: string[] }> };
-type NeonHandler = typeof handlers.GET;
 
-function adapt(handler: NeonHandler) {
-  return (request: Request, context: RouteContext) =>
-    handler(request, {
+/**
+ * Neon SDK expects a catch-all "path"; Momentum's existing Next.js endpoint
+ * uses "all". Resolve that difference without a URL or route rename.
+ * Resolve the auth instance per request so CI builds need no runtime secrets.
+ */
+function adapt(method: Method) {
+  return async (request: Request, context: RouteContext): Promise<Response> => {
+    const handlers = getManagedAuth().handler();
+    return handlers[method](request, {
       params: context.params.then(({ all }) => ({ path: all })),
     });
+  };
 }
 
-export const GET = adapt(handlers.GET);
-export const POST = adapt(handlers.POST);
-export const PUT = adapt(handlers.PUT);
-export const PATCH = adapt(handlers.PATCH);
-export const DELETE = adapt(handlers.DELETE);
+export const GET = adapt("GET");
+export const POST = adapt("POST");
+export const PUT = adapt("PUT");
+export const PATCH = adapt("PATCH");
+export const DELETE = adapt("DELETE");

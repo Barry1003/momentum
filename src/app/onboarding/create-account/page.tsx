@@ -180,7 +180,7 @@ export default function CreateAccountPage() {
           }
           setBusy(true);
           try {
-            const response = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+            const response = await authClient.signIn.social({ provider: "google", callbackURL: "/onboarding/auth-complete" });
             if (response.error) setNotice(response.error.message || "Google sign-in failed.");
           } catch { setNotice("Could not start Google sign-in."); }
           finally { setBusy(false); }

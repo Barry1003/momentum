@@ -1,6 +1,6 @@
 import "server-only";
 import { getPrisma } from "@/db/client";
-import { auth } from "./managed";
+import { getManagedAuth } from "./managed";
 
 export type AuthenticatedUser = { id: string; email: string; emailVerified: boolean; name: string };
 
@@ -10,7 +10,7 @@ export type AuthenticatedUser = { id: string; email: string; emailVerified: bool
  * and refuse ambiguous existing email matches instead of claiming old data.
  */
 export async function getCurrentUser(): Promise<AuthenticatedUser | null> {
-  const { data: session, error } = await auth.getSession();
+  const { data: session, error } = await getManagedAuth().getSession();
   if (error) throw new Error("Unable to validate Neon Auth session");
   if (!session?.user) return null;
   const remote = session.user;
