@@ -19,7 +19,6 @@ export default function AuthCompletePage() {
   const [attempt, setAttempt] = useState(0);
 
   const check = useCallback(async () => {
-    setResult(null);
     try {
       const sessionResult = await authClient.getSession();
       if (sessionResult.error) {
@@ -73,7 +72,7 @@ export default function AuthCompletePage() {
             {result.state === "verify-email" ? "Verify your email to continue." : result.message}
           </p>
           {result.state === "retry" ? (
-            <button type="button" onClick={() => setAttempt(value => value + 1)} className="rounded-full bg-accent-strong px-5 py-3 font-heading font-bold text-white">Retry connection</button>
+            <button type="button" onClick={() => { setResult(null); setAttempt(value => value + 1); }} className="rounded-full bg-accent-strong px-5 py-3 font-heading font-bold text-white">Retry connection</button>
           ) : null}
           <Link href="/onboarding/sign-in" className="font-heading font-bold text-accent-strong">Return to sign in</Link>
         </div>
