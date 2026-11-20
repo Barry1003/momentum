@@ -99,6 +99,7 @@ export default function VerifyEmailPage() {
     try {
       const response = await authClient.emailOtp.sendVerificationOtp({
         email: data.email,
+      type: "email-verification",
       });
       if (response.error) {
         setError(response.error.message || "Unable to resend your code.");
