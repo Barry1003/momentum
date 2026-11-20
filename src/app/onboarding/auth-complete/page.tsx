@@ -60,7 +60,8 @@ export default function AuthCompletePage() {
   // Avoid depending on the unstable context.update function in this effect:
   // recheck only on explicit retry; see the guarded invocation below.
   useEffect(() => {
-    void check();
+    // Schedule after the effect; state updates only follow the auth request.
+    void Promise.resolve().then(check);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]);
 
